@@ -6,7 +6,7 @@ A dub sound system in your browser. Describe a riddim in your own words and it p
 
 [![An idea typed into the console becomes a riddim](docs/demo.gif)](https://alb777.github.io/dubwise/docs/demo.mp4)
 
-**[Watch the 1 minute demo with sound](https://alb777.github.io/dubwise/docs/demo.mp4)**: one drop, then `Iration Steppas meets King Tubby` turning into a fast steppers soaked in echo, throws, the siren, a bass drop-out and a slow one drop to close. Recorded from the real app, sound included.
+**[Watch the 80 second demo with sound](https://alb777.github.io/dubwise/docs/demo.mp4)**, in the Ethiopia theme: a one drop, then six ideas typed into the console, `Iration Steppas meets King Tubby`, `a slow one drop for a rainy night`, `Natiruts na praia`, `un ritmo para bailar bajo la luna`, `furious robots in the factory` and `Damian Marley meets Lee Perry`, with throws, the siren, filter sweeps and a bass drop-out in between. Recorded from the real app, sound included.
 
 ## What you can do
 

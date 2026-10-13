@@ -29,9 +29,14 @@ const TAP = `(() => {
     };
 })();`;
 
+// The demo plays in the Ethiopia theme, picked before the page loads.
+const THEME = `localStorage.setItem("dubwise-theme", "ethiopia");`;
+
 /** @type {{ file: string, time: number }[]} */
 const frames = [];
 let audioStart = 0;
+/** When the first idea starts to be typed, where the README loop begins. */
+let firstIdea = 0;
 let audio = "";
 
 await withPage(
@@ -138,25 +143,36 @@ await withPage(
             return Date.now() / 1000;
         })()`);
 
-        await wait(5500);
+        await wait(4500);
         await hold('.strip[data-channel="rim"] .throw', 450);
-        await wait(2500);
-        await sweep(-0.85);
-        await wait(1500);
-        await type("Iration Steppas meets King Tubby");
-        await wait(5000);
-        await hold('.strip[data-channel="skank"] .throw', 500);
-        await wait(2500);
-        await siren(3200);
         await wait(2000);
+        firstIdea = await evaluate("Date.now() / 1000");
+        await type("Iration Steppas meets King Tubby");
+        await wait(5500);
+        await hold('.strip[data-channel="skank"] .throw', 500);
+        await wait(2000);
+        await siren(3200);
+        await wait(1500);
+        await type("a slow one drop for a rainy night");
+        await wait(5000);
+        await sweep(-0.85);
+        await wait(1000);
+        await type("Natiruts na praia");
+        await wait(5500);
+        await type("un ritmo para bailar bajo la luna");
+        await wait(5000);
+        await hold('.strip[data-channel="rim"] .throw', 450);
+        await wait(1500);
+        await type("furious robots in the factory");
+        await wait(5000);
         await type("mute bass");
-        await wait(3300);
-        await type("unmute bass");
         await wait(3000);
-        await type("a slow dark one drop in E minor with lots of echo");
+        await type("unmute bass");
+        await wait(2500);
+        await type("Damian Marley meets Lee Perry");
         await wait(5500);
         await hold('.strip[data-channel="rim"] .throw', 450);
-        await wait(2500);
+        await wait(2000);
         await sweep(0.7);
         await wait(3000);
 
@@ -180,6 +196,7 @@ await withPage(
                 mobile: false,
             });
             await send("Page.addScriptToEvaluateOnNewDocument", { source: TAP });
+            await send("Page.addScriptToEvaluateOnNewDocument", { source: THEME });
         },
     },
 );
@@ -214,7 +231,7 @@ ffmpeg([
 // A silent loop for the README, which cannot play sound inline: the part where an idea becomes a riddim.
 const gif = join(ROOT, "docs", "demo.gif");
 const palette = join(work, "palette.png");
-const clip = ["-ss", "13", "-t", "9"];
+const clip = ["-ss", Math.max(0, firstIdea - frames[0].time - 0.5).toFixed(2), "-t", "9"];
 ffmpeg([...clip, "-i", mp4, "-vf", "fps=10,scale=800:-1:flags=lanczos,palettegen=stats_mode=diff", palette]);
 ffmpeg([
     ...clip,
