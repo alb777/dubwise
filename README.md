@@ -2,6 +2,8 @@
 
 A dub sound system in your browser. Describe a riddim in your own words and it plays: synthesized drums and bass, a tape echo, a spring reverb, a siren, and a console you can live-code. No samples, no account, no install, no AI service, and it works offline.
 
+**Play it: https://alb777.github.io/dubwise/**
+
 ![dubwise playing a one drop riddim](docs/screenshot.png)
 
 ## What you can do
