@@ -327,6 +327,20 @@ await withPage("/", async (page) => {
         own.includes('dubwise read "volcano waking up" as: minor'),
         own,
     );
+    const keyBefore = await evaluate("document.getElementById('keyinfo').textContent");
+    const bpmBefore = Number(await evaluate("document.getElementById('bpm').value"));
+    await evaluate(type("a bit faster"));
+    await wait(300);
+    check(
+        "a bit faster speeds up the riddim playing and keeps its key",
+        Number(await evaluate("document.getElementById('bpm').value")) === bpmBefore + 6 &&
+            (await evaluate("document.getElementById('keyinfo').textContent")) === keyBefore &&
+            ((await evaluate(lines("ok"))).at(-1) ?? "").startsWith("the same riddim, now at"),
+        await evaluate("document.getElementById('bpm').value"),
+    );
+    await evaluate(type("undo"));
+    await wait(300);
+    check("undo takes the change back", Number(await evaluate("document.getElementById('bpm').value")) === bpmBefore);
 
     for (const [name, width, height, mobile] of [
         ["desktop", 1280, 1000, false],

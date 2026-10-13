@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { ARTISTS } from "../skills/dubwise/scripts/artists.mjs";
-import { compose, readIntent } from "../skills/dubwise/scripts/composer.mjs";
+import { compose, readIntent, refine } from "../skills/dubwise/scripts/composer.mjs";
 import { bassMidi, parse } from "../skills/dubwise/scripts/notation.mjs";
 
 /** Compose, parse, and return both. */
@@ -315,6 +315,66 @@ describe("references and images", () => {
             for (const [field, value] of Object.entries(expected))
                 assert.deepEqual(read[field], value, `${idea}: ${field}`);
             riddimFor(idea);
+        }
+    });
+});
+
+describe("changing the riddim playing", () => {
+    /** Rockers at 100 bpm in E minor, busy, dry echo. */
+    const BASE = compose("a dark rockers in E minor at 100 bpm, dry, busy").text ?? "";
+    /** Refine the base and parse the result. @param {string} request */
+    const changed = (request) => {
+        const result = refine(request, BASE);
+        assert.ok(result, `${request} should change the riddim playing`);
+        const { riddim, errors } = parse(result.text);
+        assert.deepEqual(errors, [], request);
+        return { riddim: /** @type {NonNullable<typeof riddim>} */ (riddim), summary: result.summary };
+    };
+    const base = /** @type {NonNullable<ReturnType<typeof parse>["riddim"]>} */ (parse(BASE).riddim);
+
+    it("changes only what the words ask and keeps the bass line, chords and root", () => {
+        const { riddim, summary } = changed("brighter");
+        assert.deepEqual(riddim.key, { root: "E", mode: "major" });
+        assert.deepEqual([riddim.bass, riddim.chords, riddim.bpm], [base.bass, base.chords, base.bpm]);
+        assert.deepEqual(riddim.drums, base.drums);
+        assert.equal(summary, "the same riddim, now in E major");
+    });
+
+    it("moves the tempo in steps, either way, in three languages", () => {
+        assert.equal(changed("faster").riddim.bpm, 106);
+        assert.equal(changed("more fast").riddim.bpm, 106);
+        assert.equal(changed("a bit slower").riddim.bpm, 94);
+        assert.equal(changed("less fast").riddim.bpm, 94);
+        assert.equal(changed("menos rápido").riddim.bpm, 94);
+        assert.equal(changed("más rápido").riddim.bpm, 106);
+    });
+
+    it("moves echo and drums one step at a time", () => {
+        assert.equal(changed("more echo").riddim.echo.feedback, 0.5);
+        assert.equal(changed("mais eco").riddim.spring, 0.3);
+        const sparser = changed("sparser").riddim;
+        assert.ok(sparser.drums.hat.filter(Boolean).length < base.drums.hat.filter(Boolean).length);
+        assert.deepEqual(sparser.drums.kick, base.drums.kick);
+        assert.deepEqual(changed("steppers now").riddim.drums.kick.slice(0, 4), [1, 0, 0, 0]);
+    });
+
+    it("says when the riddim is already so, and how to make it darker", () => {
+        const result = refine("more dark in the same style", BASE);
+        assert.equal(result?.text, BASE);
+        assert.match(result?.summary ?? "", /^already in E minor; for a darker sound try "filter -0\.5"/);
+        assert.equal(refine("less echo", BASE)?.summary, "already dry echo");
+    });
+
+    it("leaves ideas with something new to the composer", () => {
+        for (const idea of [
+            "dark steppers",
+            "darker like King Tubby",
+            "more dark like a rainy night",
+            "faster volcano",
+            "more bass",
+            "more",
+        ]) {
+            assert.equal(refine(idea, BASE), null, idea);
         }
     });
 });

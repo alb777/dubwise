@@ -7,7 +7,7 @@
  * Artist references shape style, tempo and feel only. Nothing here holds or copies a real song.
  */
 import { ARTISTS } from "./artists.mjs";
-import { bassMidi, parse, STEPS_PER_BAR } from "./notation.mjs";
+import { bassMidi, parse, STEPS_PER_BAR, serialize } from "./notation.mjs";
 
 /** @typedef {"one-drop" | "rockers" | "steppers"} Style */
 /** @typedef {"major" | "minor"} Mode */
@@ -521,6 +521,8 @@ const IMAGERY = [
         ),
     },
 ];
+/** The words and phrases of the plain word lists. */
+const VOCABULARY_WORDS = new Set(Object.values(WORDS).flat());
 /** Every word the composer knows, which a typo in a name is never taken for. */
 const VOCABULARY = new Set([...Object.values(WORDS).flat(), ...IMAGERY.flatMap((image) => image.words), ...FILLER]);
 
@@ -924,6 +926,20 @@ function bassBar(random, style, density, move, chord, nextChord, key) {
 }
 
 /**
+ * One bar of each drum for a style at a density. The hat's last bar opens on the last offbeat.
+ * @param {Style} style @param {Density} density
+ */
+function drumLines(style, density) {
+    const kick = { "one-drop": "........x.......", rockers: "x.......x.......", steppers: "x...x...x...x..." }[style];
+    const rim = density === "busy" && style !== "steppers" ? "........x.....x." : "........x.......";
+    const hat = { sparse: "..x...x...x...x.", normal: "x.x.x.x.x.x.x.x.", busy: "x.xxx.xxx.xxx.xx" }[density];
+    const lastHat = density === "sparse" ? hat : `${hat.slice(0, 12)}o${hat.slice(13)}`;
+    const skank =
+        style === "steppers" ? "..x...x...x...x." : density === "busy" ? "....x.x.....x.x." : "....x.......x...";
+    return { kick, rim, hat, lastHat, skank };
+}
+
+/**
  * Turn an intent into a riddim. A `suggestion`, an AI's reading of the idea, only fills what neither the idea's own
  * words nor a known artist decide.
  * @param {Intent} intent @param {number} seed @param {Reading} [suggestion]
@@ -953,12 +969,7 @@ export function composeIntent(intent, seed, suggestion = {}) {
     const move = intent.bass ?? mix?.bass ?? suggestion.bass ?? (style === "steppers" ? "root" : "melodic");
     const chords = mix?.name === "dub techno" ? [["1"], ["1"]] : pick(random, PROGRESSIONS[mode]);
 
-    const kick = { "one-drop": "........x.......", rockers: "x.......x.......", steppers: "x...x...x...x..." }[style];
-    const rim = density === "busy" && style !== "steppers" ? "........x.....x." : "........x.......";
-    const hat = { sparse: "..x...x...x...x.", normal: "x.x.x.x.x.x.x.x.", busy: "x.xxx.xxx.xxx.xx" }[density];
-    const lastHat = density === "sparse" ? hat : `${hat.slice(0, 12)}o${hat.slice(13)}`;
-    const skank =
-        style === "steppers" ? "..x...x...x...x." : density === "busy" ? "....x.x.....x.x." : "....x.......x...";
+    const { kick, rim, hat, lastHat, skank } = drumLines(style, density);
     const bass = chords.flatMap((bar, b) => {
         const degree = Number(bar[0].replace(/\D/g, ""));
         const next = Number(chords[(b + 1) % chords.length][0].replace(/\D/g, ""));
@@ -1037,4 +1048,126 @@ export function compose(request, take = 0, reading = null) {
             : ` (I don't know ${phrases} yet, so your words picked this take; add a style, mood or tempo to steer it)`;
     }
     return { understood: true, text, summary: summary + note, intent };
+}
+
+/** Words that make an idea a change to the riddim playing, as in "darker", "more echo" or "in the same style". */
+const RELATIVE = new Set([
+    "speed up",
+    "slow down",
+    ...wordsOf(
+        "more less even still now bit little same keep faster quicker slower darker sadder heavier gloomier brighter",
+        "happier cheerier wetter drier dryer busier fuller sparser emptier",
+        "mais menos ainda agora pouco mesmo mesma manter mantem mantenha acelera acelerar",
+        "mas aun ahora poco mismo misma mantener",
+    ),
+]);
+/** Words only an image has, which make an idea a new one. */
+const IMAGE_ONLY = new Set(IMAGERY.flatMap((image) => image.words).filter((word) => !VOCABULARY_WORDS.has(word)));
+/** The other way of each word list, for "less fast" or "menos escuro". */
+const OPPOSITE = /** @type {const} */ ({
+    slow: "fast",
+    fast: "slow",
+    minor: "major",
+    major: "minor",
+    dry: "wet",
+    wet: "dry",
+    sparse: "busy",
+    busy: "sparse",
+});
+const DENSITIES = /** @type {const} */ (["sparse", "normal", "busy"]);
+const ECHO_LEVELS = [
+    { echo: "dry", feedback: 0.35, spring: 0.15 },
+    { echo: "some", feedback: 0.5, spring: 0.3 },
+    { echo: "wide", feedback: 0.65, spring: 0.45 },
+];
+const STEP_VALUES = { ".": 0, x: 1, X: 2, o: 3 };
+
+/**
+ * Change the riddim playing instead of composing a new one, for an idea made only of relative words, such as
+ * "darker", "more echo", "a bit faster" or "more dark in the same style". Bass and chords are scale degrees in the
+ * notation, so a new mode plays the same line in the other mode, and the drums change only for a new style or
+ * density. Returns null when the idea brings something new (a name, an image, a word the composer does not know).
+ * @param {string} request @param {string} text the notation of the riddim playing
+ * @returns {{ text: string, summary: string } | null}
+ */
+export function refine(request, text) {
+    let words = normalize(request);
+    if (![...RELATIVE].some((word) => has(words, word))) return null;
+    // "less fast" asks for the other way, unless the list has the phrase itself, as with "less echo".
+    for (const [meaning, other] of Object.entries(OPPOSITE)) {
+        for (const word of WORDS[/** @type {keyof typeof OPPOSITE} */ (meaning)]) {
+            for (const negation of ["less", "menos"]) {
+                const phrase = `${negation} ${word}`;
+                if (has(words, phrase) && !VOCABULARY_WORDS.has(phrase)) {
+                    words = words.replace(` ${phrase} `, ` ${WORDS[other][0]} `);
+                }
+            }
+        }
+    }
+    // The request itself when nothing was turned around, since a key such as "E minor" is read in its own case.
+    const intent = readIntent(words === normalize(request) ? request : words);
+    const fresh = intent.unknown.some((phrase) => phrase.split(" ").some((word) => !RELATIVE.has(word)));
+    if (intent.artist || intent.bass || fresh || intent.matched.some((word) => IMAGE_ONLY.has(word))) return null;
+    const { riddim } = parse(text);
+    if (!riddim) return null;
+    /** @type {string[]} */
+    const changes = [];
+    /** @type {string[]} */
+    const already = [];
+    /** @param {boolean} changed @param {string} said */
+    const tell = (changed, said) => (changed ? changes : already).push(said);
+    if (intent.root || intent.mode) {
+        const key = { root: intent.root ?? riddim.key.root, mode: intent.mode ?? riddim.key.mode };
+        tell(key.root !== riddim.key.root || key.mode !== riddim.key.mode, `in ${key.root} ${key.mode}`);
+        riddim.key = key;
+    }
+    if (intent.bpm || intent.tempo) {
+        const bpm = intent.bpm ?? Math.min(200, Math.max(50, riddim.bpm + (intent.tempo === "fast" ? 6 : -6)));
+        tell(bpm !== riddim.bpm, `at ${bpm} bpm`);
+        riddim.bpm = bpm;
+    }
+    if (intent.echo) {
+        const distance = (/** @type {number} */ i) => Math.abs(ECHO_LEVELS[i].feedback - riddim.echo.feedback);
+        const now = [1, 2].reduce((best, i) => (distance(i) < distance(best) ? i : best), 0);
+        const next = Math.max(0, Math.min(2, now + (intent.echo === "high" ? 1 : -1)));
+        const level = ECHO_LEVELS[next];
+        tell(next !== now || level.feedback !== riddim.echo.feedback, `${level.echo} echo`);
+        riddim.echo.feedback = level.feedback;
+        riddim.spring = level.spring;
+    }
+    if (intent.style || intent.density) {
+        const kicks = riddim.drums.kick.slice(0, STEPS_PER_BAR).filter(Boolean).length;
+        const style = intent.style ?? (kicks >= 4 ? "steppers" : kicks === 2 ? "rockers" : "one-drop");
+        const hats = riddim.drums.hat.slice(0, STEPS_PER_BAR).filter(Boolean).length;
+        const now = hats <= 4 ? 0 : hats >= 10 ? 2 : 1;
+        const density = intent.density
+            ? DENSITIES[Math.max(0, Math.min(2, now + (intent.density === "busy" ? 1 : -1)))]
+            : DENSITIES[now];
+        const lines = drumLines(style, density);
+        const steps = (/** @type {string} */ bar, /** @type {string} */ last) =>
+            Array.from({ length: riddim.bars }, (_, b) => (b === riddim.bars - 1 ? last : bar))
+                .join("")
+                .split("")
+                .map((step) => STEP_VALUES[/** @type {keyof typeof STEP_VALUES} */ (step)]);
+        const drums = {
+            kick: steps(lines.kick, lines.kick),
+            rim: steps(lines.rim, lines.rim),
+            hat: steps(lines.hat, lines.lastHat),
+            skank: steps(lines.skank, lines.skank),
+        };
+        const label = { "one-drop": "one drop", rockers: "rockers", steppers: "steppers" }[style];
+        tell(JSON.stringify(drums) !== JSON.stringify(riddim.drums), `${label} drums, ${density}`);
+        riddim.drums = drums;
+        riddim.swing = STYLE_SWING[style];
+    }
+    if (!changes.length && !already.length) return null;
+    const summary = [
+        changes.length ? `the same riddim, now ${changes.join(", ")}` : "",
+        already.length ? `already ${already.join(", ")}` : "",
+    ]
+        .filter(Boolean)
+        .join(", ");
+    if (changes.length) return { text: serialize(riddim), summary };
+    const darker = intent.mode === "minor" ? '; for a darker sound try "filter -0.5", "more echo" or "slower"' : "";
+    return { text, summary: summary + darker };
 }

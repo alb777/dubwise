@@ -6,7 +6,7 @@
  * which updates the engine, the shareable URL and the screen together.
  */
 
-import { compose, readIntent } from "../skills/dubwise/scripts/composer.mjs";
+import { compose, readIntent, refine } from "../skills/dubwise/scripts/composer.mjs";
 import { groundReading } from "../skills/dubwise/scripts/intent.mjs";
 import { parseLexicon } from "../skills/dubwise/scripts/lexicon.mjs";
 import {
@@ -237,6 +237,17 @@ async function composeIdea(request, askAnyway = false) {
     // Wake the audio while the key press still counts as a gesture: the AI can take longer than browsers allow.
     audio();
     asking?.abort();
+    // "darker", "more echo" or "a bit faster" change the riddim playing; "again" still means the last new idea.
+    const refined = askAnyway ? null : refine(request, state.text);
+    if (refined) {
+        if (refined.text !== state.text) {
+            remember();
+            loadText(refined.text);
+        }
+        print(refined.summary, "ok");
+        if (!sequencer?.playing) togglePlay();
+        return;
+    }
     state.lastRequest = request;
     state.take = 0;
     state.reading = null;
