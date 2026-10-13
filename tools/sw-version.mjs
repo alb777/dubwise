@@ -12,6 +12,12 @@ export function precacheList(sw) {
     return JSON.parse(/const PRECACHE = (\[[\s\S]*?\]);/.exec(sw)[1].replace(/,\s*\]/, "]"));
 }
 
+/** Cache name for the word map, which is cached the first time an idea needs it rather than precached. */
+export function lexiconVersion() {
+    const hash = createHash("sha256").update(readFileSync(join(ROOT, "skills/dubwise/assets/lexicon.bin")));
+    return `lexicon-${hash.digest("hex").slice(0, 10)}`;
+}
+
 /** Version string for the current contents of the precached files. */
 export function contentVersion(sw) {
     const hash = createHash("sha256");
@@ -28,6 +34,12 @@ if (import.meta.main) {
     const file = join(ROOT, "sw.js");
     const sw = readFileSync(file, "utf8");
     const version = contentVersion(sw);
-    writeFileSync(file, sw.replace(/const VERSION = "[^"]*";/, `const VERSION = "${version}";`));
-    console.log(version);
+    const lexicon = lexiconVersion();
+    writeFileSync(
+        file,
+        sw
+            .replace(/const VERSION = "[^"]*";/, `const VERSION = "${version}";`)
+            .replace(/const LEXICON_CACHE = "[^"]*";/, `const LEXICON_CACHE = "${lexicon}";`),
+    );
+    console.log(version, lexicon);
 }

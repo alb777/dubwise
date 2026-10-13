@@ -7,6 +7,7 @@
  */
 
 import { compose, readIntent } from "../skills/dubwise/scripts/composer.mjs";
+import { parseLexicon } from "../skills/dubwise/scripts/lexicon.mjs";
 import {
     chordAt,
     DRUMS,
@@ -206,6 +207,23 @@ function composeAndPlay() {
     if (!sequencer?.playing) togglePlay();
 }
 
+/** dubwise's own word map, fetched the first time an idea needs it. @type {Promise<ReturnType<typeof parseLexicon>> | null} */
+let wordMap = null;
+
+function loadWordMap() {
+    const loading = fetch("skills/dubwise/assets/lexicon.bin")
+        .then((response) => {
+            if (!response.ok) throw new Error(`word map: ${response.status}`);
+            return response.arrayBuffer();
+        })
+        .then(parseLexicon);
+    loading.catch(() => {
+        if (wordMap === loading) wordMap = null;
+    });
+    wordMap = loading;
+    return loading;
+}
+
 /** The AI request in flight, dropped when a newer idea comes in. @type {AbortController | null} */
 let asking = null;
 
@@ -248,6 +266,16 @@ async function composeIdea(request, askAnyway = false) {
             );
         } finally {
             if (asking === controller) asking = null;
+        }
+    }
+    // Without an AI reading, dubwise's own word map reads the unknown words, accents and all.
+    if (!state.reading && unknown.length) {
+        try {
+            const reading = (await (wordMap ?? loadWordMap())).read(request, unknown);
+            if (state.lastRequest !== request) return;
+            state.reading = reading;
+        } catch {
+            // The word map could not load, as on a first visit without a connection: the word lists alone read it.
         }
     }
     composeAndPlay();

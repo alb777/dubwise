@@ -317,6 +317,14 @@ await withPage("/", async (page) => {
     failing = false;
     await evaluate(type("ai off"));
     check("ai off turns it off", (await evaluate("document.getElementById('ai-toggle').dataset.state")) === "off");
+    await evaluate(type("a volcano waking up"));
+    await wait(1500);
+    const own = (await evaluate(lines("ok"))).at(-1) ?? "";
+    check(
+        "with the AI off, dubwise's word map reads unknown words",
+        own.includes('dubwise read "volcano waking up" as: minor'),
+        own,
+    );
 
     for (const [name, width, height, mobile] of [
         ["desktop", 1280, 1000, false],

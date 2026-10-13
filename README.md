@@ -20,7 +20,7 @@ A dub sound system in your browser. Describe a riddim in your own words and it p
 8. **Ask any AI.** `prompt <idea>` copies a prompt for any chat AI. Paste its answer back into the console and it plays.
 9. **Learn it as you play.** The **guide** button (or `?`) opens a guide beside the app; its buttons run the real commands and point at the controls.
 10. **Dress it in a flag.** The flag in the top right corner picks a theme: dub, Jamaica, Ethiopia, Brazil, South Africa, Great Britain, Trinidad & Tobago or Poland. Every theme is checked for readable text and visible buttons.
-11. **Let an AI read the rest, if you want.** Ideas the word lists miss, like `Martin Campbell style` or `a volcano waking up`, can go to an AI you choose under **✦ ai**. It is off until you pick one. See [The AI reader](#the-ai-reader).
+11. **Read the rest.** Words the lists miss, like `a volcano waking up` or `minha avó cozinhando num domingo`, go to dubwise's own word map, offline; names and films can go to an AI you choose under **✦ ai**. See [Reading what the word lists miss](#reading-what-the-word-lists-miss).
 
 ## The console
 
@@ -70,15 +70,19 @@ The composer runs in the page, with no model and no network. It reads the idea f
 
 References cover more than a hundred artists, scenes and eras, from Studio One and King Tubby to UK steppers, lovers rock, dancehall, the reggae revival and reggae from Brazil, Africa, Poland and France. They map to broad style traits only, checked against public sources: King Tubby means heavy echo and channels dropping out, Jah Shaka means militant steppers. Plain words beat images, and images set the mood without taking a named artist's drums. dubwise holds no songs, so it never copies a real bassline or melody, and a name it does not know is said out loud instead of guessed at. No idea is turned down: words it does not know still pick a take, and the reply names them so you can steer with a style, mood or tempo. The `prompt` command asks the same of any chat AI you hand the idea to.
 
-## The AI reader
+## Reading what the word lists miss
 
-The word lists cover styles, moods, images and a hundred references, but not everything: a film director, a place, a feeling. Under **✦ ai** (or the `ai` command) you can pick who reads the rest:
+The word lists cover styles, moods, images and more than a hundred references, but not everything: a volcano, a grandmother, a film director. dubwise reads the rest in two ways.
 
-1. **In this browser.** An open model, Qwen3.5 (Apache-2.0), runs on your graphics card through [WebLLM](https://github.com/mlc-ai/web-llm). It downloads once (1.1 GB, or 0.45 GB for the lighter one) and then works offline. It needs WebGPU: in Chrome or Brave on Linux, turn on `chrome://flags/#enable-unsafe-webgpu`.
+**Its own word map, always on.** A table of word vectors from [potion-multilingual-128M](https://huggingface.co/minishlab/potion-multilingual-128M) (MIT), cut down to the letters of Portuguese, Spanish and English (`tools/build-lexicon.mjs`). No model runs: an unknown phrase is placed among the words the composer knows, and each trait (minor or major, slow or lively, sparse or busy, dry or wide echo) goes to the closer side when the gap is clear. It downloads once, 4 MB, the first time an idea needs it, answers in under a millisecond and works offline. It read 27 of 30 odd ideas the way a person would (`tests/lexicon.test.mjs`); names it reads loosely. The reply says `dubwise read "volcano waking up" as: minor, slow, sparse, wide echo`.
+
+**An AI, if you pick one** under **✦ ai** (or the `ai` command), for names, films and nuance:
+
+1. **In this browser.** An open model, Qwen3.5 (Apache-2.0), runs on your graphics card through [WebLLM](https://github.com/mlc-ai/web-llm). It downloads once (1.1 GB, or 0.45 GB for the lighter one) and then works offline, about 3 seconds an idea. It needs WebGPU on the graphics card: in Chrome or Brave on Linux, turn on both `chrome://flags/#enable-unsafe-webgpu` and `chrome://flags/#enable-vulkan`; without Vulkan WebGPU runs on the processor, which dubwise refuses as far too slow.
 2. **Chrome's built-in model**, offered only when the browser has one.
 3. **A server you choose**: Ollama or LM Studio on your computer, or an online service such as Groq, OpenRouter or Gemini with your own key. Ollama has to let the page in: `OLLAMA_ORIGINS=https://alb777.github.io ollama serve`. LM Studio needs CORS turned on.
 
-The AI never writes notes. It fills a small form (style, tempo, key, mood, echo, density, bass and a few words on how it read the idea), dubwise checks every value, and the composer uses it only where the idea's own words and the artists it knows leave a gap. It is only asked when some words are unknown, or when you type `ai <idea>`. If it fails, the riddim comes from dubwise's own reading. Nothing is sent anywhere until you pick a provider; a key stays in the tab and is forgotten when it closes.
+The AI never writes notes. It fills a small form (style, tempo, key, mood, echo, density, bass and a few words on how it read the idea), dubwise checks every value, and the composer uses it only where the idea's own words and the artists it knows leave a gap. It is only asked about the words dubwise does not know, or the whole idea when you type `ai <idea>`. If it fails, the word map reads the idea instead. Nothing is sent anywhere until you pick a provider; a key stays in the tab and is forgotten when it closes.
 
 ## Offline
 
@@ -94,6 +98,7 @@ npm test                # notation, sequencer, console, and offline audio render
 npm run check           # TypeScript strict checking of the JSDoc types, and Biome
 npm run check:browser   # audio and UI checks in a headless Chromium browser (BROWSER=chromium to pick one)
 npm run check:ai        # the in-browser AI on your GPU over odd ideas; downloads the model (1.1 GB) once
+npm run build:lexicon   # rebuild the word map from potion-multilingual-128M (512 MB download, once), then npm run sw:version
 python3 -m http.server  # then open http://localhost:8000
 ```
 

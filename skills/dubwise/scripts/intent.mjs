@@ -13,7 +13,8 @@
 /** @typedef {"slow" | "laid back" | "steady" | "lively" | "frantic"} Tempo */
 /**
  * @typedef {{ reading?: string, style?: Style, tempo?: Tempo, mode?: Mode, echo?: Amount, density?: Density,
- *   bass?: BassMove }} Reading
+ *   bass?: BassMove, by?: string }} Reading
+ * `by` names the reader in the reply when it is not an AI, such as "dubwise" for the word map in lexicon.mjs.
  * @typedef {{ role: "system" | "user" | "assistant", content: string }} Message
  */
 

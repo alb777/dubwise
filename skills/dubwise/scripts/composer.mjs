@@ -489,6 +489,47 @@ const IMAGERY = [
 ];
 /** Every word the composer knows, which a typo in a name is never taken for. */
 const VOCABULARY = new Set([...Object.values(WORDS).flat(), ...IMAGERY.flatMap((image) => image.words), ...FILLER]);
+
+/** The feel each word list gives, in the terms of an AI's reading. */
+const WORD_FEELS = /** @type {Record<keyof typeof WORDS, import("./intent.mjs").Reading | null>} */ ({
+    "one-drop": { style: "one-drop" },
+    rockers: { style: "rockers" },
+    steppers: { style: "steppers" },
+    slow: { tempo: "slow" },
+    fast: { tempo: "lively" },
+    minor: { mode: "minor" },
+    major: { mode: "major" },
+    dry: { echo: "low" },
+    wet: { echo: "high" },
+    sparse: { density: "sparse" },
+    busy: { density: "busy" },
+    melodic: { bass: "melodic" },
+    root: { bass: "root" },
+    generic: null,
+});
+
+/**
+ * Every word and image the composer knows with the feel it gives, for a reader that matches unknown words to the
+ * nearest known ones, such as the word vectors in lexicon.mjs.
+ * @returns {{ word: string, feel: import("./intent.mjs").Reading }[]}
+ */
+export function knownFeelings() {
+    /** @type {{ word: string, feel: import("./intent.mjs").Reading }[]} */
+    const known = [];
+    for (const [meaning, words] of Object.entries(WORDS)) {
+        const feel = WORD_FEELS[/** @type {keyof typeof WORDS} */ (meaning)];
+        if (feel) for (const word of words) known.push({ word, feel });
+    }
+    for (const { feel, words } of IMAGERY) {
+        const { tempo, ...rest } = feel;
+        /** @type {import("./intent.mjs").Reading} */
+        const reading = { ...rest };
+        if (tempo) reading.tempo = tempo === "fast" ? "lively" : "slow";
+        for (const word of words) known.push({ word, feel: reading });
+    }
+    return known;
+}
+
 /** Intent fields that steer the riddim. Any one of them means the idea was understood in part. */
 const STEERING = /** @type {const} */ (["style", "bpm", "tempo", "root", "mode", "echo", "density", "bass", "artist"]);
 const SOLFEGE = /** @type {Record<string, string>} */ ({
@@ -916,10 +957,11 @@ export function composeIntent(intent, seed, suggestion = {}) {
     let summary = `${label} at ${bpm} bpm in ${root} ${mode}, ${move === "melodic" ? "melodic" : "rooted"} bass, ${
         { low: "dry", mid: "some", high: "wide" }[echo]
     } echo`;
+    const reader = suggestion.by ? `${suggestion.by}'s reading` : "the AI's reading";
     if (blend === "lead" && mix) {
-        summary += `, drums and tempo from the AI's reading, echo and bass from ${mix.name} (${mix.traits})`;
+        summary += `, drums and tempo from ${reader}, echo and bass from ${mix.name} (${mix.traits})`;
     } else if (blend === "mix" && artist) {
-        summary += `, drums and tempo from ${artist.name} (${artist.traits}), echo and bass from the AI's reading`;
+        summary += `, drums and tempo from ${artist.name} (${artist.traits}), echo and bass from ${reader}`;
     } else if (artist && intent.mixArtist) {
         const other = intent.mixArtist;
         summary += `, ${artist.name} meets ${other.name}: drums and tempo from ${artist.name} (${artist.traits}), echo and bass from ${other.name} (${other.traits})`;
@@ -954,7 +996,7 @@ export function compose(request, take = 0, reading = null) {
         : "";
     const phrases = intent.unknown.map((phrase) => `"${phrase}"`).join(", ");
     if (reading?.reading) {
-        note += ` (the AI read ${phrases || "it"} as: ${reading.reading})`;
+        note += ` (${reading.by ?? "the AI"} read ${phrases || "it"} as: ${reading.reading})`;
     } else if (intent.unknown.length) {
         note += STEERING.some((field) => intent[field] !== undefined)
             ? ` (I don't know ${phrases}, so I went by the other words)`
