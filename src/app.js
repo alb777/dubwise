@@ -39,6 +39,8 @@ import {
 import { aiPrompt, CHANNELS, COMMANDS, PRESETS, parseCommand, THEMES } from "./console.js";
 import { createEngine } from "./engine.js";
 import { GUIDE } from "./guide.js";
+import { createSelector } from "./selector.js";
+import { SELECTOR } from "./selector-content.js";
 import { applyRiddim, createSequencer } from "./sequencer.js";
 
 /** @typedef {import("../skills/dubwise/scripts/notation.mjs").Riddim} Riddim */
@@ -878,7 +880,7 @@ function describeReading(reading) {
 
 // ----- console
 
-/** @param {string} text @param {"in" | "out" | "err" | "ok" | "dim"} [kind] */
+/** @param {string} text @param {"in" | "out" | "err" | "ok" | "dim" | "sel"} [kind] */
 function print(text, kind = "out") {
     const line = document.createElement("div");
     line.className = kind;
@@ -904,8 +906,32 @@ async function copy(text, done) {
     }
 }
 
-/** @param {string} input */
+const selector = createSelector(SELECTOR);
+
+/** A line typed in the console: talk for the selector, else a command or an idea. @param {string} input */
 function execute(input) {
+    const said = selector.reply(input);
+    if (!said) return run(input);
+    print(`> ${input}`, "in");
+    for (const text of said.say) print(text, "sel");
+    if (said.idea) void composeIdea(said.idea);
+    if (said.steps) playSteps(said.steps);
+}
+
+/**
+ * Run console commands on the beat, counted from the next bar, as the selector plays a technique on the riddim.
+ * They skip the selector, so what it offered still stands.
+ * @param {import("./selector.js").Step[]} steps
+ */
+function playSteps(steps) {
+    if (!sequencer?.playing) togglePlay();
+    const beat = 60 / state.riddim.bpm;
+    const toBar = state.step < 0 ? 0 : ((STEPS_PER_BAR - (state.step % STEPS_PER_BAR)) % STEPS_PER_BAR) * (beat / 4);
+    for (const step of steps) setTimeout(() => run(step.command), (toBar + step.beat * beat) * 1000);
+}
+
+/** A command or an idea. @param {string} input */
+function run(input) {
     const command = parseCommand(input);
     if (!command) return;
     print(`> ${input}`, "in");
@@ -1231,7 +1257,7 @@ document.addEventListener("keydown", (event) => {
 window.addEventListener("hashchange", () => loadFromLink());
 if (!loadFromLink()) void loadPreset(PRESETS[0]);
 print(
-    "dubwise is ready. Press play, click steps to edit, describe a riddim (inspired by Augustus Pablo) or press ? for the guide",
+    "dubwise is ready. Press play, click steps to edit, describe a riddim (inspired by Augustus Pablo), say hi to the selector, or press ? for the guide",
     "dim",
 );
 requestAnimationFrame(animate);

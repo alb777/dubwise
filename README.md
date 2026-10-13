@@ -14,8 +14,9 @@ A dub sound system in your browser. Describe a riddim in your own words and it p
 2. **Mix it like dub**: mute, solo, hold **throw** to send a channel into the echo, sweep the filter, play the siren.
 3. **Hit the effects**: spring crash, echo spin, air horn, phaser, low and high kills, tape stop and pull up.
 4. **Edit and live-code**: click the grid, or type a line like `bpm 76` or `kick x...x...x...x...`.
-5. **Share it**: the whole riddim lives in the link.
-6. **Learn as you play**: **guide** (or `?`) opens beside the app, and the flag in the corner picks one of 8 themes.
+5. **Talk to the selector**: say hi for the mood of the day, `tip` for a dub technique it plays on your riddim, `who is Scientist?` for the story behind a name.
+6. **Share it**: the whole riddim lives in the link.
+7. **Learn as you play**: **guide** (or `?`) opens beside the app, and the flag in the corner picks one of 8 themes.
 
 ## The console
 
@@ -32,6 +33,7 @@ preset <name>             one-drop, rockers, steppers
 again, undo               another version of the last idea, or back one change
 show, share, help, notation, clear
 theme <name>, guide       change the colours, open the guide
+hi, mood, tip, challenge  talk to the selector: who is King Tubby? what is a dubplate?
 ai, prompt <idea>         pick an AI reader, or copy a prompt for any chat AI
 <anything else>           an idea: inspired by King Tubby, steppers at 76 bpm, darker...
 ```

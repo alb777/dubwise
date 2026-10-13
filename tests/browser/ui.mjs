@@ -371,6 +371,20 @@ await withPage("/", async (page) => {
     await wait(1500);
     check("pull up stops the riddim and plays it again from the top", pulled && (await playing()), pulled);
 
+    // The selector answers talk in the console and plays what it offers.
+    await evaluate(type("hi"));
+    await wait(300);
+    const greeting = (await evaluate(lines("sel"))).join(" ");
+    check("the selector greets with the mood of the day", greeting.includes("Today's mood:"), greeting.slice(0, 120));
+    await evaluate(type("play it"));
+    await wait(800);
+    const moodPlayed = (await evaluate(lines("ok"))).at(-1) ?? "";
+    check("play it composes the mood", / bpm in /.test(moodPlayed), moodPlayed);
+    await evaluate(type("who is King Tubby?"));
+    await wait(300);
+    const story = (await evaluate(lines("sel"))).at(-2) ?? "";
+    check("the selector tells the story behind a name", story.startsWith("King Tubby:"), story);
+
     for (const [name, width, height, mobile] of [
         ["desktop", 1280, 1000, false],
         ["phone", 390, 844, true],

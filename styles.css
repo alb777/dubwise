@@ -742,6 +742,15 @@ input[type="range"] {
     color: var(--cool);
 }
 
+.log .sel {
+    color: var(--text);
+}
+
+.log .sel::before {
+    content: "selector › ";
+    color: var(--accent);
+}
+
 .log .dim {
     color: var(--muted);
     white-space: pre;

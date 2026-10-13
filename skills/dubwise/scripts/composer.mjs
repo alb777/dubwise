@@ -326,6 +326,7 @@ const WORDS = {
         "lyrical",
     ],
     root: [
+        "rooted",
         "sub bass",
         "subgrave",
         "heavy bass",
@@ -383,7 +384,7 @@ const FILLER = new Set(
         "meets vs versus x",
         "um uma uns umas o os as e ou de do da dos das com sem para pra pro por no na nos nas em num numa algo algum",
         "alguma coisa tipo estilo inspirado inspirada inspiracao eu quero queria bem muito muita mais pouco so isso",
-        "esse essa som musica versao favor",
+        "esse essa som musica versao favor bass baixo",
         "un una el la los las y del con sin en cosa quiero hazme muy mas como",
         "what when where while which who about into under day time play playing remind reminds",
         "que quando onde sob debaixo sobre dia vez tocar toca lembre lembra lembrar parece soa",

@@ -1,10 +1,13 @@
-// Builds skills/dubwise/scripts/artists.mjs, the catalogue of artists, scenes, eras and riddims the composer knows,
-// from its readable source, which is kept outside this repository. The output holds the catalogue as an obfuscated
-// string, so it does not read as plain text here. It is not encrypted: the browser has to read it, so anyone can.
-// It also ships the words never to read as a name typed with a slip: every common word within a slip of an alias,
-// taken from the word map's vocabulary, plus the source's own NOT_NAMES.
-// Usage: node tools/build-references.mjs [source module]   (default ~/dev/dubwise-data/artists.mjs, which must
-// `export const ARTISTS = [...]` and may `export const NOT_NAMES = [...]`), then npm run sw:version.
+// Builds the curated content from its readable source, which is kept outside this repository:
+// - skills/dubwise/scripts/artists.mjs, the catalogue of artists, scenes, eras and riddims the composer knows, with
+//   the words never to read as a name typed with a slip (every common word within a slip of an alias, from the word
+//   map's vocabulary, plus the source's own NOT_NAMES);
+// - src/selector-content.js, what the selector says.
+// Each holds its content as an obfuscated string, so it does not read as plain text here. It is not encrypted: the
+// browser has to read it, so anyone can.
+// Usage: node tools/build-references.mjs [source folder]   (default ~/dev/dubwise-data, whose artists.mjs must
+// `export const ARTISTS = [...]` and may `export const NOT_NAMES = [...]`, and whose selector.mjs must
+// `export const SELECTOR = {...}`), then npm run sw:version.
 import { readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
@@ -14,9 +17,9 @@ import { deflateRawSync } from "node:zlib";
 // Not the composer: it reads the file this writes.
 import { editDistance } from "../skills/dubwise/scripts/distance.mjs";
 
-const SOURCE = resolve(process.argv[2] ?? join(homedir(), "dev", "dubwise-data", "artists.mjs"));
-const OUT = join(import.meta.dirname, "..", "skills", "dubwise", "scripts", "artists.mjs");
-const LEXICON = join(import.meta.dirname, "..", "skills", "dubwise", "assets", "lexicon.bin");
+const SOURCE = resolve(process.argv[2] ?? join(homedir(), "dev", "dubwise-data"));
+const ROOT = join(import.meta.dirname, "..");
+const LEXICON = join(ROOT, "skills", "dubwise", "assets", "lexicon.bin");
 /** The keystream seed. Changing it changes every byte of the output and nothing else. */
 const SEED = 0x6475_6273;
 const CHOICES = {
@@ -27,7 +30,7 @@ const CHOICES = {
     bass: ["root", "melodic"],
 };
 
-const source = await import(pathToFileURL(SOURCE).href);
+const source = await import(pathToFileURL(join(SOURCE, "artists.mjs")).href);
 const { ARTISTS } = source;
 const problems = [];
 const aliases = new Map();
@@ -80,24 +83,74 @@ for (const alias of aliases.keys()) {
 }
 
 const fields = ["name", "aliases", "style", "bpm", "mode", "echo", "density", "bass", "traits"];
-// Compressed before it is mixed, since mixed bytes no longer compress on the way to the browser.
-const bytes = deflateRawSync(
-    JSON.stringify({
+const artists = writeModule(
+    join(ROOT, "skills", "dubwise", "scripts", "artists.mjs"),
+    [
+        "The catalogue of artists, scenes, eras and riddims the composer knows, as broad style traits, checked against",
+        "public sources; it holds no songs.",
+    ],
+    {
         artists: ARTISTS.map((entry) => Object.fromEntries(fields.map((field) => [field, entry[field]]))),
         notNames: [...notNames].sort(),
-    }),
-    { level: 9 },
+    },
+    `{ artists: import("./composer.mjs").Artist[], notNames: string[] }`,
+    `const { artists, notNames } = await decode(DATA);
+export const ARTISTS = artists;
+/** Words never read as a name typed with a slip, such as "great" next to Green Day. */
+export const NOT_NAMES = new Set(notNames);
+`,
 );
-const next = keystream(SEED);
-for (let i = 0; i < bytes.length; i++) bytes[i] ^= next();
-const data = Buffer.from(bytes).toString("base64");
+console.log(`${ARTISTS.length} references and ${notNames.size} words that are not names: ${artists}`);
 
-writeFileSync(
-    OUT,
-    `// @ts-check
+const { SELECTOR } = await import(pathToFileURL(join(SOURCE, "selector.mjs")).href);
+const names = new Set(ARTISTS.map((/** @type {{ name: string }} */ entry) => entry.name));
+const techniques = new Set(SELECTOR.techniques.map((/** @type {{ id: string }} */ technique) => technique.id));
+const moods = new Set(SELECTOR.moods.map((/** @type {{ name: string }} */ mood) => mood.name));
+const wrong = [
+    ...SELECTOR.moods.filter((/** @type {{ technique: string }} */ mood) => !techniques.has(mood.technique)),
+    ...SELECTOR.stories.filter((/** @type {{ name: string }} */ story) => !names.has(story.name)),
+    ...SELECTOR.feelings.filter(
+        (/** @type {{ moods: string[] }} */ feeling) => !feeling.moods.every((m) => moods.has(m)),
+    ),
+    ...SELECTOR.faq.filter(
+        (/** @type {{ technique?: string }} */ entry) => entry.technique && !techniques.has(entry.technique),
+    ),
+];
+if (wrong.length) {
+    console.error(
+        `the selector points at things that are not there:\n${wrong.map((w) => JSON.stringify(w)).join("\n")}`,
+    );
+    process.exit(1);
+}
+const said = writeModule(
+    join(ROOT, "src", "selector-content.js"),
+    ["What the selector says: its voice, moods, techniques, stories, answers and challenges."],
+    SELECTOR,
+    `import("./selector.js").Content`,
+    `export const SELECTOR = await decode(DATA);
+`,
+);
+console.log(
+    `${SELECTOR.moods.length} moods, ${SELECTOR.techniques.length} techniques, ${SELECTOR.stories.length} stories, ${SELECTOR.faq.length} answers, ${SELECTOR.challenges.length} challenges: ${said}`,
+);
+
+/**
+ * Write a module that holds `payload` compressed and obfuscated, then reads it with `tail`. Returns where and how big.
+ * @param {string} file @param {string[]} what comment lines on what it holds @param {unknown} payload
+ * @param {string} type the JSDoc type of the payload @param {string} tail
+ */
+function writeModule(file, what, payload, type, tail) {
+    // Compressed before it is mixed, since mixed bytes no longer compress on the way to the browser.
+    const bytes = deflateRawSync(JSON.stringify(payload), { level: 9 });
+    const next = keystream(SEED);
+    for (let i = 0; i < bytes.length; i++) bytes[i] ^= next();
+    const data = Buffer.from(bytes).toString("base64");
+    writeFileSync(
+        file,
+        `// @ts-check
 // Generated by tools/build-references.mjs from a source kept outside this repository. Do not edit by hand.
-// The catalogue of artists, scenes, eras and riddims the composer knows, as broad style traits, checked against
-// public sources; it holds no songs. It is obfuscated so it does not read as plain text here, not encrypted.
+${what.map((text) => `// ${text}`).join("\n")}
+// It is obfuscated so it does not read as plain text here, not encrypted.
 
 const DATA =
     "${data}";
@@ -114,7 +167,7 @@ function keystream(seed) {
     };
 }
 
-/** @param {string} text @returns {Promise<{ artists: import("./composer.mjs").Artist[], notNames: string[] }>} */
+/** @param {string} text @returns {Promise<${type}>} */
 async function decode(text) {
     const bytes = Uint8Array.from(atob(text), (c) => c.charCodeAt(0));
     const next = keystream(${SEED});
@@ -123,15 +176,10 @@ async function decode(text) {
     return JSON.parse(await new Response(inflated).text());
 }
 
-const { artists, notNames } = await decode(DATA);
-export const ARTISTS = artists;
-/** Words never read as a name typed with a slip, such as "great" next to Green Day. */
-export const NOT_NAMES = new Set(notNames);
-`,
-);
-console.log(
-    `${ARTISTS.length} references and ${notNames.size} words that are not names, from ${SOURCE}: ${OUT} (${(data.length / 1024).toFixed(0)} KB)`,
-);
+${tail}`,
+    );
+    return `${file} (${(data.length / 1024).toFixed(0)} KB)`;
+}
 
 /**
  * The common words of the word map's vocabulary, accents folded: whole-word tokens that score above the one score

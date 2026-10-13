@@ -53,6 +53,12 @@ export const GUIDE = [
         ],
     },
     {
+        title: "Talk to the selector",
+        text: "The selector lives in the console. Say hi and it gives you the mood of the day; tell it how you feel and it picks one for you. `tip` teaches a dub technique and `try it` plays it on your riddim. Ask `who is Scientist?` or `what is a dubplate?`, or for a `challenge`.",
+        show: "#command",
+        try: ["hi", "play it", "tip", "try it", "who is King Tubby?", "challenge"],
+    },
+    {
         title: "Let an AI read the rest",
         text: "Words the lists miss, like a volcano or a grandmother, are read by dubwise's own word map, offline. Names, films and places can go to an AI you choose: an open model in this browser, a server on your computer or an online service. Either one only fills what the idea leaves open and never writes the notes. `ai <idea>` asks the AI even when every word is known.",
         show: "#ai-toggle",

@@ -92,6 +92,7 @@ export const COMMANDS = `commands
   ai <idea>, ai off         ask the AI even when every word is known, or turn it off
   theme <name>              colours: ${Object.keys(THEMES).join(", ")}
   guide                     open the guide beside the app (or press ?)
+  hi, mood, tip, challenge  talk to the selector, or ask: who is King Tubby? what is a dubplate?
   help, notation, clear
 
 Describe a riddim in your own words and dubwise writes it, offline:
