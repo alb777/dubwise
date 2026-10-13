@@ -315,7 +315,7 @@ textarea:focus-visible {
 
 .fx label {
     display: grid;
-    grid-template-columns: 110px 1fr 44px;
+    grid-template-columns: 110px 1fr 64px;
     align-items: center;
     gap: 8px;
     color: var(--muted);
@@ -449,6 +449,6 @@ footer a {
         grid-template-columns: repeat(2, 1fr);
     }
     .fx label {
-        grid-template-columns: 90px 1fr 40px;
+        grid-template-columns: 90px 1fr 60px;
     }
 }

@@ -23,7 +23,8 @@ export const COMMANDS = `commands
   help, notation, clear
 
 Describe a riddim in your own words and dubwise writes it, offline:
-  inspired by Augustus Pablo / a dark steppers in D minor / um one drop lento com muito eco
+  inspired by Augustus Pablo / a dark steppers in D minor / a slow one drop with lots of echo
+  (English, Portuguese or Spanish)
 Type a notation line (bpm 76, kick x...x...x...x...) to change the riddim while it plays,
 or paste a whole riddim that starts with "dubwise 1".`;
 
