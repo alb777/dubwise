@@ -8,7 +8,8 @@
         "check": "tsc -p . && biome check .",
         "check:browser": "node tests/browser/audio.mjs && node tests/browser/ui.mjs",
         "check:offline": "node tests/browser/offline.mjs",
-        "sw:version": "node tools/sw-version.mjs"
+        "sw:version": "node tools/sw-version.mjs",
+        "check:ai": "node tests/browser/ai-model.mjs"
     },
     "devDependencies": {
         "@biomejs/biome": "2.5.14",

@@ -1,11 +1,12 @@
 // @ts-check
 /**
- * The dubwise page: step grid, channel strips, effects, siren pad, the console, colour themes and the guide.
+ * The dubwise page: step grid, channel strips, effects, siren pad, the console, colour themes, the guide and the
+ * optional AI reader.
  * Every change, from a grid click, a slider or a console line, goes through commit(),
  * which updates the engine, the shareable URL and the screen together.
  */
 
-import { compose } from "../skills/dubwise/scripts/composer.mjs";
+import { compose, readIntent } from "../skills/dubwise/scripts/composer.mjs";
 import {
     chordAt,
     DRUMS,
@@ -19,6 +20,19 @@ import {
     stepAt,
     toHash,
 } from "../skills/dubwise/scripts/notation.mjs";
+import {
+    BROWSER_MODELS,
+    browserModelCached,
+    chromeAvailability,
+    ENDPOINTS,
+    loadBrowserModel,
+    loadKey,
+    loadSettings,
+    readIdea,
+    saveKey,
+    saveSettings,
+    webgpuSupport,
+} from "./ai.js";
 import { aiPrompt, CHANNELS, COMMANDS, PRESETS, parseCommand, THEMES } from "./console.js";
 import { createEngine } from "./engine.js";
 import { GUIDE } from "./guide.js";
@@ -28,6 +42,8 @@ import { applyRiddim, createSequencer } from "./sequencer.js";
 /** @typedef {import("../skills/dubwise/scripts/notation.mjs").ParseError} ParseError */
 /** @typedef {import("./engine.js").Engine} Engine */
 /** @typedef {import("./console.js").Channel} Channel */
+/** @typedef {import("./ai.js").Settings} AISettings */
+/** @typedef {import("../skills/dubwise/scripts/intent.mjs").Reading} Reading */
 
 const FROM_LINK = "from-link";
 const CUSTOM = "custom";
@@ -64,6 +80,14 @@ const ui = {
     guideToggle: byId("guide-toggle"),
     guideClose: byId("guide-close"),
     guideSteps: byId("guide-steps"),
+    aiToggle: byId("ai-toggle"),
+    aiDialog: /** @type {HTMLDialogElement} */ (byId("ai-dialog")),
+    aiForm: /** @type {HTMLFormElement} */ (byId("ai-form")),
+    aiChrome: byId("ai-chrome"),
+    aiNote: byId("ai-note"),
+    aiStatus: byId("ai-status"),
+    aiProgress: /** @type {HTMLProgressElement} */ (byId("ai-progress")),
+    aiTry: byId("ai-try"),
 };
 
 const state = {
@@ -83,6 +107,11 @@ const state = {
     undo: [],
     lastRequest: "",
     take: 0,
+    /** The AI's reading of the last idea, kept for "again". @type {Reading | null} */
+    reading: null,
+    /** Whether the player was told about the AI reader yet, which happens once a visit. */
+    toldAboutAI: false,
+    ai: loadSettings(),
 };
 
 /** @type {Engine | null} */
@@ -161,15 +190,63 @@ function remember() {
     if (state.undo.length > 50) state.undo.shift();
 }
 
-/** Compose the last idea at the current take, load it and start playing. */
+/** Compose the last idea at the current take, with the AI's reading if there is one, load it and start playing. */
 function composeAndPlay() {
-    const result = compose(state.lastRequest, state.take);
+    const result = compose(state.lastRequest, state.take, state.reading);
     if (!result.understood) return print(result.summary, "err");
     remember();
     loadText(result.text);
     print(result.summary, "ok");
     print('"again" for another version, "undo" to go back, "show" for the notation', "dim");
+    if (state.ai.provider === "off" && result.intent.unknown.length && !state.toldAboutAI) {
+        state.toldAboutAI = true;
+        print('an AI can read ideas like this one: open ✦ ai at the top, or type "ai"', "dim");
+    }
     if (!sequencer?.playing) togglePlay();
+}
+
+/** The AI request in flight, dropped when a newer idea comes in. @type {AbortController | null} */
+let asking = null;
+
+/**
+ * Compose a new idea. With the AI reader on, words the word lists do not know go to it first; `ai <idea>` asks
+ * even when every word is known. If the AI fails, the idea is composed from dubwise's own reading.
+ * @param {string} request @param {boolean} [askAnyway]
+ */
+async function composeIdea(request, askAnyway = false) {
+    // Wake the audio while the key press still counts as a gesture: the AI can take longer than browsers allow.
+    audio();
+    asking?.abort();
+    state.lastRequest = request;
+    state.take = 0;
+    state.reading = null;
+    if (state.ai.provider !== "off" && (askAnyway || readIntent(request).unknown.length)) {
+        const controller = new AbortController();
+        asking = controller;
+        const line = print("asking the AI…", "dim");
+        setAIState("busy");
+        try {
+            state.reading = await readIdea(state.ai, request, {
+                signal: controller.signal,
+                onProgress: (fraction, text) => {
+                    line.textContent = `loading the AI model, ${Math.round(fraction * 100)}% (${text.slice(0, 60)})`;
+                },
+            });
+            setAIState("on");
+            line.remove();
+        } catch (error) {
+            if (controller.signal.aborted) return;
+            setAIState("error");
+            line.remove();
+            print(
+                `the AI could not read it (${/** @type {Error} */ (error).message}), so dubwise used its own reading`,
+                "err",
+            );
+        } finally {
+            if (asking === controller) asking = null;
+        }
+    }
+    composeAndPlay();
 }
 
 /** @param {string} text @returns {boolean} */
@@ -555,6 +632,132 @@ function showGuide(open, focus = false) {
     if (focus) (open ? ui.guideClose : ui.guideToggle).focus();
 }
 
+// ----- AI reader
+
+const PROVIDER_NAMES = {
+    off: "off",
+    browser: "the model in this browser",
+    chrome: "Chrome's built-in model",
+    endpoint: "your server",
+};
+
+/** @param {"off" | "on" | "busy" | "error"} mode */
+function setAIState(mode) {
+    ui.aiToggle.dataset.state = mode;
+    ui.aiToggle.title = `AI reader: ${PROVIDER_NAMES[state.ai.provider]}`;
+}
+
+/** @param {AISettings} settings */
+function setAISettings(settings) {
+    state.ai = settings;
+    saveSettings(settings);
+    setAIState(settings.provider === "off" ? "off" : "on");
+}
+
+/** @param {string} name */
+const aiField = (name) => /** @type {HTMLInputElement} */ (ui.aiForm.elements.namedItem(name));
+
+/** The settings the dialog shows right now, saved or not. @returns {AISettings} */
+function formSettings() {
+    const data = new FormData(ui.aiForm);
+    const provider = String(data.get("provider") ?? "off");
+    const size = String(data.get("size") ?? "better");
+    return {
+        provider: provider === "browser" || provider === "chrome" || provider === "endpoint" ? provider : "off",
+        size: size === "small" ? "small" : "better",
+        url: String(data.get("url") ?? "").trim(),
+        model: String(data.get("model") ?? "").trim(),
+    };
+}
+
+/** @param {string} text @param {"" | "ok" | "err"} [kind] */
+function aiStatus(text, kind = "") {
+    ui.aiStatus.textContent = text;
+    ui.aiStatus.className = `ai-status ${kind}`.trim();
+}
+
+/** Where a server's ideas go, or what a server on this computer needs before it answers. */
+function describeEndpoint() {
+    let host = "";
+    try {
+        host = new URL(formSettings().url).host;
+    } catch {
+        // No address yet.
+    }
+    if (!host) ui.aiNote.textContent = "Fill in the server's address.";
+    else if (/^(localhost|127\.0\.0\.1)(:|$)/.test(host))
+        ui.aiNote.textContent = `Ollama has to let this page in: start it with OLLAMA_ORIGINS=${location.origin} ollama serve. LM Studio needs CORS turned on in its server settings.`;
+    else ui.aiNote.textContent = `Your ideas go to ${host}. The key stays in this tab and is forgotten when it closes.`;
+}
+
+/** Say what the provider picked in the dialog needs, or that it is ready. */
+async function describeProvider() {
+    const settings = formSettings();
+    if (settings.provider === "browser") {
+        const model = BROWSER_MODELS[settings.size];
+        if (!(await webgpuSupport()).gpu)
+            return aiStatus(
+                "This browser has no WebGPU. In Chrome or Brave on Linux, turn on chrome://flags/#enable-unsafe-webgpu, or pick a server instead.",
+                "err",
+            );
+        return aiStatus(
+            (await browserModelCached(settings.size))
+                ? `${model.name} is downloaded and ready.`
+                : `${model.name} downloads ${model.download} the first time it reads an idea, then works offline.`,
+        );
+    }
+    if (settings.provider === "chrome") {
+        const availability = await chromeAvailability();
+        return aiStatus(
+            availability === "available" ? "Chrome's model is ready." : `Chrome reports its model as ${availability}.`,
+        );
+    }
+    if (settings.provider === "endpoint") describeEndpoint();
+    aiStatus("");
+}
+
+async function openAISettings() {
+    const settings = state.ai;
+    for (const input of ui.aiForm.querySelectorAll('input[name="provider"]')) {
+        const radio = /** @type {HTMLInputElement} */ (input);
+        radio.checked = radio.value === settings.provider;
+    }
+    aiField("size").value = settings.size;
+    aiField("url").value = settings.url;
+    aiField("model").value = settings.model;
+    aiField("key").value = loadKey();
+    aiField("preset").value = Object.entries(ENDPOINTS).find(([, e]) => e.url === settings.url)?.[0] ?? "custom";
+    ui.aiProgress.hidden = true;
+    aiStatus("");
+    ui.aiDialog.showModal();
+    ui.aiChrome.hidden = (await chromeAvailability()) === "unavailable";
+    void describeProvider();
+}
+
+/** Load the in-browser model right after it is picked, so the first idea does not wait for it. */
+async function warmUpBrowserModel() {
+    const line = print("loading the AI model…", "dim");
+    setAIState("busy");
+    try {
+        await loadBrowserModel(state.ai.size, (fraction) => {
+            line.textContent = `loading the AI model, ${Math.round(fraction * 100)}%`;
+        });
+        line.textContent = "the AI model is loaded and ready";
+        line.className = "ok";
+        setAIState("on");
+    } catch (error) {
+        line.remove();
+        setAIState("error");
+        print(`the AI model did not load: ${/** @type {Error} */ (error).message}`, "err");
+    }
+}
+
+/** @param {Reading} reading */
+function describeReading(reading) {
+    const settings = [reading.style, reading.tempo, reading.mode, reading.echo && `${reading.echo} echo`];
+    return `read as "${reading.reading ?? "?"}": ${settings.filter(Boolean).join(", ")}`;
+}
+
 // ----- console
 
 /** @param {string} text @param {"in" | "out" | "err" | "ok" | "dim"} [kind] */
@@ -564,6 +767,7 @@ function print(text, kind = "out") {
     line.textContent = text;
     ui.log.append(line);
     ui.log.scrollTop = ui.log.scrollHeight;
+    return line;
 }
 
 /** @param {ParseError[]} errors */
@@ -617,9 +821,14 @@ function execute(input) {
             void loadPreset(command.name);
             return;
         case "compose":
-            state.lastRequest = command.request;
-            state.take = 0;
-            return composeAndPlay();
+            void composeIdea(command.request, command.ai);
+            return;
+        case "ai":
+            void openAISettings();
+            return;
+        case "ai-off":
+            setAISettings({ ...state.ai, provider: "off" });
+            return print("the AI reader is off; ideas stay in this browser", "ok");
         case "again":
             if (!state.lastRequest) return print("describe a riddim first, then ask again for another version", "err");
             state.take += 1;
@@ -710,6 +919,62 @@ document.addEventListener("pointerdown", (event) => {
     if (themeMenuOpen() && !ui.theme.parentElement?.contains(/** @type {Node} */ (event.target))) showThemeMenu(false);
 });
 ui.guideToggle.addEventListener("click", () => showGuide(!guideOpen(), true));
+setAIState(state.ai.provider === "off" ? "off" : "on");
+/** @type {HTMLSelectElement} */ (/** @type {unknown} */ (aiField("preset"))).replaceChildren(
+    new Option("my own address", "custom"),
+    ...Object.entries(ENDPOINTS).map(([id, endpoint]) => new Option(endpoint.name, id)),
+);
+ui.aiToggle.addEventListener("click", () => void openAISettings());
+ui.aiForm.addEventListener("change", (event) => {
+    const target = /** @type {HTMLInputElement} */ (event.target);
+    if (target.name === "preset" && target.value in ENDPOINTS) {
+        aiField("url").value = ENDPOINTS[/** @type {keyof typeof ENDPOINTS} */ (target.value)].url;
+    }
+    if (target.name !== "model" && target.name !== "key") void describeProvider();
+});
+aiField("url").addEventListener("input", () => {
+    const url = aiField("url").value.trim();
+    aiField("preset").value = Object.entries(ENDPOINTS).find(([, e]) => e.url === url)?.[0] ?? "custom";
+    describeEndpoint();
+});
+ui.aiTry.addEventListener("click", async () => {
+    const settings = formSettings();
+    if (settings.provider === "off") return aiStatus("Pick who reads your ideas first.", "err");
+    saveKey(aiField("key").value.trim());
+    aiStatus("reading…");
+    ui.aiProgress.hidden = settings.provider !== "browser";
+    try {
+        const reading = await readIdea(settings, "Martin Campbell style", {
+            onProgress: (fraction) => {
+                ui.aiProgress.value = fraction;
+                aiStatus(`loading the model, ${Math.round(fraction * 100)}%`);
+            },
+        });
+        aiStatus(describeReading(reading), "ok");
+    } catch (error) {
+        aiStatus(`It did not work: ${/** @type {Error} */ (error).message}`, "err");
+    } finally {
+        ui.aiProgress.hidden = true;
+    }
+});
+ui.aiForm.addEventListener("submit", (event) => {
+    const button = /** @type {HTMLButtonElement | null} */ (/** @type {SubmitEvent} */ (event).submitter);
+    if (button?.value !== "save") return;
+    const settings = formSettings();
+    if (settings.provider === "endpoint" && (!settings.url || !settings.model)) {
+        event.preventDefault();
+        return aiStatus("Fill in the address and the model's name.", "err");
+    }
+    saveKey(aiField("key").value.trim());
+    setAISettings(settings);
+    print(
+        settings.provider === "off"
+            ? "the AI reader is off; ideas stay in this browser"
+            : `the AI reader is on: ${PROVIDER_NAMES[settings.provider]} reads the words dubwise does not know`,
+        "ok",
+    );
+    if (settings.provider === "browser") void warmUpBrowserModel();
+});
 ui.guideClose.addEventListener("click", () => showGuide(false, true));
 for (const name of PRESETS) ui.preset.add(new Option(name.replace("-", " "), name));
 ui.preset.addEventListener("change", () => {
@@ -809,6 +1074,8 @@ ui.command.addEventListener("keydown", (event) => {
 ui.prompt.addEventListener("submit", (event) => event.preventDefault());
 
 document.addEventListener("keydown", (event) => {
+    // The AI dialog handles its own keys, Escape included.
+    if (ui.aiDialog.open) return;
     if (event.key === "Escape" && themeMenuOpen()) {
         showThemeMenu(false, true);
         return;

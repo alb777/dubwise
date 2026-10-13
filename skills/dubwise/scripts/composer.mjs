@@ -24,6 +24,7 @@ import { bassMidi, parse, STEPS_PER_BAR } from "./notation.mjs";
  * "Iration Steppas meets King Tubby", sets echo, bass and mood. `unknown` holds the phrases nothing
  * here understood, such as "martin campbell" in "Martin Campbell style".
  * @typedef {Pick<Intent, "style" | "tempo" | "mode" | "echo" | "density" | "bass">} Feel
+ * @typedef {import("./intent.mjs").Reading} Reading
  */
 
 /** Every alias with its artist, longest first, so "damian marley" is read before "marley". */
@@ -498,6 +499,8 @@ const SOLFEGE = /** @type {Record<string, string>} */ ({
 const KEY_PREFIXES = new Set(["in", "em", "en", "key", "tom", "tonalidade", "tono"]);
 const STYLE_BPM = { "one-drop": 72, rockers: 76, steppers: 74 };
 const STYLE_SWING = { "one-drop": 0.15, rockers: 0.08, steppers: 0 };
+/** How far an AI's named tempo moves a style's tempo, so "frantic" stays a fast dub, not a techno track. */
+const TEMPO_SHIFT = { slow: -8, "laid back": -3, steady: 0, lively: 6, frantic: 14 };
 const MINOR_ROOTS = ["A", "D", "E", "G", "C", "B", "F#"];
 const MAJOR_ROOTS = ["C", "G", "D", "F", "A", "E"];
 const PROGRESSIONS = {
@@ -775,30 +778,31 @@ function bassBar(random, style, density, move, chord, nextChord, key) {
 }
 
 /**
- * Turn an intent into a riddim.
- * @param {Intent} intent @param {number} seed
+ * Turn an intent into a riddim. A `suggestion`, an AI's reading of the idea, only fills what neither the idea's own
+ * words nor a known artist decide.
+ * @param {Intent} intent @param {number} seed @param {Reading} [suggestion]
  */
-export function composeIntent(intent, seed) {
+export function composeIntent(intent, seed, suggestion = {}) {
     const random = mulberry32(seed);
     const artist = intent.artist;
     const mix = intent.mixArtist ?? artist;
     const style =
         intent.style ??
         artist?.style ??
+        suggestion.style ??
         (intent.mode === "major"
             ? "one-drop"
             : pick(random, /** @type {const} */ (["one-drop", "rockers", "steppers"])));
-    const mode = intent.mode ?? mix?.mode ?? "minor";
+    const mode = intent.mode ?? mix?.mode ?? suggestion.mode ?? "minor";
     const root = intent.root ?? pick(random, mode === "minor" ? MINOR_ROOTS : MAJOR_ROOTS);
     const shift = intent.tempo === "slow" ? -6 : intent.tempo === "fast" ? 8 : 0;
-    const bpm =
-        intent.bpm ??
-        Math.round(
-            Math.min(200, Math.max(50, (artist?.bpm ?? STYLE_BPM[style]) + shift + Math.floor(random() * 5) - 2)),
-        );
-    const density = intent.density ?? artist?.density ?? "normal";
-    const echo = intent.echo ?? mix?.echo ?? "mid";
-    const move = intent.bass ?? mix?.bass ?? (style === "steppers" ? "root" : "melodic");
+    // The idea's own tempo words and a named artist set the tempo first; an AI's named tempo counts only without them.
+    const moved = intent.tempo || artist ? shift : TEMPO_SHIFT[suggestion.tempo ?? "steady"];
+    const center = (artist?.bpm ?? STYLE_BPM[style]) + moved;
+    const bpm = intent.bpm ?? Math.round(Math.min(200, Math.max(50, center + Math.floor(random() * 5) - 2)));
+    const density = intent.density ?? artist?.density ?? suggestion.density ?? "normal";
+    const echo = intent.echo ?? mix?.echo ?? suggestion.echo ?? "mid";
+    const move = intent.bass ?? mix?.bass ?? suggestion.bass ?? (style === "steppers" ? "root" : "melodic");
     const chords = mix?.name === "dub techno" ? [["1"], ["1"]] : pick(random, PROGRESSIONS[mode]);
 
     const kick = { "one-drop": "........x.......", rockers: "x.......x.......", steppers: "x...x...x...x..." }[style];
@@ -852,9 +856,10 @@ export function composeIntent(intent, seed) {
  * Compose a riddim from free text.
  * @param {string} request the idea, in English, Portuguese or Spanish
  * @param {number} [take] 0 for the first version, 1, 2... for others
+ * @param {Reading | null} [reading] an AI's reading of the idea, from sanitizeReading() in intent.mjs
  * @returns {{ understood: false, summary: string } | { understood: true, text: string, summary: string, intent: Intent }}
  */
-export function compose(request, take = 0) {
+export function compose(request, take = 0, reading = null) {
     // Any idea gets a riddim, however odd. Only text without a single word in it is turned down.
     if (!/[\p{L}\p{N}]/u.test(request)) {
         return {
@@ -864,12 +869,14 @@ export function compose(request, take = 0) {
         };
     }
     const intent = readIntent(request);
-    const { text, summary } = composeIntent(intent, hash(normalize(request)) + take * 7919);
+    const { text, summary } = composeIntent(intent, hash(normalize(request)) + take * 7919, reading ?? {});
     const { errors } = parse(text);
     if (errors.length) throw new Error(`composer wrote an invalid riddim: ${JSON.stringify(errors)}`);
     let note = "";
-    if (intent.unknown.length) {
-        const phrases = intent.unknown.map((phrase) => `"${phrase}"`).join(", ");
+    const phrases = intent.unknown.map((phrase) => `"${phrase}"`).join(", ");
+    if (reading?.reading) {
+        note = ` (the AI read ${phrases || "it"} as: ${reading.reading})`;
+    } else if (intent.unknown.length) {
         note = STEERING.some((field) => intent[field] !== undefined)
             ? ` (I don't know ${phrases}, so I went by the other words)`
             : ` (I don't know ${phrases} yet, so your words picked this take; add a style, mood or tempo to steer it)`;

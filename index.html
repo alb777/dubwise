@@ -28,6 +28,9 @@
                     <small>a dub sound system in your browser</small>
                 </div>
                 <div class="utilities">
+                    <button id="ai-toggle" class="pill" type="button" aria-haspopup="dialog" aria-controls="ai-dialog" title="AI reader: off" data-state="off">
+                        <span class="icon" aria-hidden="true">✦</span><span class="label">ai</span>
+                    </button>
                     <div class="theme-picker">
                         <button id="theme" class="pill" type="button" aria-label="Colour theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-menu">
                             <span class="flag" aria-hidden="true"></span><span class="caret" aria-hidden="true">▾</span>
@@ -91,6 +94,64 @@
                 <a href="https://github.com/alb777/dubwise">source</a>
             </footer>
         </main>
+        <dialog id="ai-dialog" class="ai-dialog" aria-labelledby="ai-title">
+            <form method="dialog" id="ai-form">
+                <header>
+                    <h2 id="ai-title"><span aria-hidden="true">✦</span> AI reader</h2>
+                    <button type="submit" value="cancel" formnovalidate>close</button>
+                </header>
+                <p class="ai-lead">
+                    dubwise reads ideas with its own word lists. An AI can read the rest, like a film, a feeling or a
+                    place, and it only fills what the word lists leave open. It never writes the notes.
+                </p>
+                <fieldset class="ai-providers">
+                    <legend>Who reads your ideas</legend>
+                    <label class="ai-option">
+                        <input type="radio" name="provider" value="off" />
+                        <span><strong>Off</strong><small>Nothing leaves this browser.</small></span>
+                    </label>
+                    <label class="ai-option">
+                        <input type="radio" name="provider" value="browser" />
+                        <span>
+                            <strong>In this browser</strong>
+                            <small>An open model, Qwen3.5 (Apache-2.0), runs on your graphics card. Downloaded once, then it works offline.</small>
+                        </span>
+                    </label>
+                    <div class="ai-fields" data-for="browser">
+                        <label>model
+                            <select name="size">
+                                <option value="better">Qwen3.5 2B, 1.1 GB, reads better</option>
+                                <option value="small">Qwen3.5 0.8B, 0.45 GB, lighter</option>
+                            </select>
+                        </label>
+                        <progress id="ai-progress" max="1" value="0" hidden></progress>
+                    </div>
+                    <label class="ai-option" id="ai-chrome" hidden>
+                        <input type="radio" name="provider" value="chrome" />
+                        <span><strong>Chrome's built-in model</strong><small>Runs on this computer. Best in English and Spanish.</small></span>
+                    </label>
+                    <label class="ai-option">
+                        <input type="radio" name="provider" value="endpoint" />
+                        <span>
+                            <strong>A server you choose</strong>
+                            <small>Ollama or LM Studio on this computer, or an online service with your key.</small>
+                        </span>
+                    </label>
+                    <div class="ai-fields" data-for="endpoint">
+                        <label>service <select name="preset"></select></label>
+                        <label>address <input name="url" type="url" spellcheck="false" /></label>
+                        <label>model <input name="model" spellcheck="false" placeholder="its name on that server" /></label>
+                        <label>key <input name="key" type="password" autocomplete="off" placeholder="online services only" /></label>
+                        <small class="ai-note" id="ai-note"></small>
+                    </div>
+                </fieldset>
+                <p class="ai-status" id="ai-status" aria-live="polite"></p>
+                <footer>
+                    <button type="button" id="ai-try">try "Martin Campbell style"</button>
+                    <button type="submit" value="save" class="primary">use it</button>
+                </footer>
+            </form>
+        </dialog>
         <aside id="guide" class="guide" aria-labelledby="guide-title" hidden>
             <header>
                 <h2 id="guide-title">dub<span>wise</span> guide</h2>

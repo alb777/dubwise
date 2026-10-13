@@ -45,6 +45,12 @@ export const GUIDE = [
         ],
     },
     {
+        title: "Let an AI read the rest",
+        text: "Ideas the word lists miss, like a film, a feeling or a place, can go to an AI you choose: an open model in this browser, a server on your computer or an online service. It only fills what the word lists leave open and never writes the notes. `ai <idea>` asks it even when every word is known.",
+        show: "#ai-toggle",
+        try: ["ai"],
+    },
+    {
         title: "Live code the notation",
         text: "Every riddim is plain text. `show` prints it, and any line you type changes the riddim while it plays. Click a row name in the grid to put its line in the console.",
         show: "#log",

@@ -20,6 +20,7 @@ A dub sound system in your browser. Describe a riddim in your own words and it p
 8. **Ask any AI.** `prompt <idea>` copies a prompt for any chat AI. Paste its answer back into the console and it plays.
 9. **Learn it as you play.** The **guide** button (or `?`) opens a guide beside the app; its buttons run the real commands and point at the controls.
 10. **Dress it in a flag.** The flag in the top right corner picks a theme: dub, Jamaica, Ethiopia, Brazil, South Africa, Great Britain, Trinidad & Tobago or Poland. Every theme is checked for readable text and visible buttons.
+11. **Let an AI read the rest, if you want.** Ideas the word lists miss, like `Martin Campbell style` or `a volcano waking up`, can go to an AI you choose under **✦ ai**. It is off until you pick one. See [The AI reader](#the-ai-reader).
 
 ## The console
 
@@ -34,6 +35,8 @@ again, undo               another version of the last idea, or back one change
 show, share, help, notation, clear
 theme <name>              dub, jamaica, ethiopia, brazil, south-africa, britain, trinidad, poland
 guide                     open the guide beside the app (or press ?)
+ai                        choose an AI to read the ideas the word lists miss
+ai <idea>, ai off         ask the AI even when every word is known, or turn it off
 prompt <idea>             a prompt for any chat AI, built from your idea
 <anything else>           an idea for the composer: inspired by King Tubby, steppers at 76 bpm...
 ```
@@ -67,19 +70,30 @@ The composer runs in the page, with no model and no network. It reads the idea f
 
 References cover more than a hundred artists, scenes and eras, from Studio One and King Tubby to UK steppers, lovers rock, dancehall, the reggae revival and reggae from Brazil, Africa, Poland and France. They map to broad style traits only, checked against public sources: King Tubby means heavy echo and channels dropping out, Jah Shaka means militant steppers. Plain words beat images, and images set the mood without taking a named artist's drums. dubwise holds no songs, so it never copies a real bassline or melody, and a name it does not know is said out loud instead of guessed at. No idea is turned down: words it does not know still pick a take, and the reply names them so you can steer with a style, mood or tempo. The `prompt` command asks the same of any chat AI you hand the idea to.
 
+## The AI reader
+
+The word lists cover styles, moods, images and a hundred references, but not everything: a film director, a place, a feeling. Under **✦ ai** (or the `ai` command) you can pick who reads the rest:
+
+1. **In this browser.** An open model, Qwen3.5 (Apache-2.0), runs on your graphics card through [WebLLM](https://github.com/mlc-ai/web-llm). It downloads once (1.1 GB, or 0.45 GB for the lighter one) and then works offline. It needs WebGPU: in Chrome or Brave on Linux, turn on `chrome://flags/#enable-unsafe-webgpu`.
+2. **Chrome's built-in model**, offered only when the browser has one.
+3. **A server you choose**: Ollama or LM Studio on your computer, or an online service such as Groq, OpenRouter or Gemini with your own key. Ollama has to let the page in: `OLLAMA_ORIGINS=https://alb777.github.io ollama serve`. LM Studio needs CORS turned on.
+
+The AI never writes notes. It fills a small form (style, tempo, key, mood, echo, density, bass and a few words on how it read the idea), dubwise checks every value, and the composer uses it only where the idea's own words and the artists it knows leave a gap. It is only asked when some words are unknown, or when you type `ai <idea>`. If it fails, the riddim comes from dubwise's own reading. Nothing is sent anywhere until you pick a provider; a key stays in the tab and is forgotten when it closes.
+
 ## Offline
 
 Open the page once and it keeps working without a connection. Browsers that support it offer to install it as an app.
 
 ## Development
 
-No build step and no runtime dependencies: the app is plain JavaScript modules served as they are. The dev tools are for testing only.
+No build step and no runtime dependencies: the app is plain JavaScript modules served as they are. The one exception is opt-in: the in-browser AI loads WebLLM, pinned to an exact version, from jsDelivr when the player turns it on. The dev tools are for testing only.
 
 ```bash
 npm install
 npm test                # notation, sequencer, console, and offline audio renders measured with node-web-audio-api
 npm run check           # TypeScript strict checking of the JSDoc types, and Biome
 npm run check:browser   # audio and UI checks in a headless Chromium browser (BROWSER=chromium to pick one)
+npm run check:ai        # the in-browser AI on your GPU over odd ideas; downloads the model (1.1 GB) once
 python3 -m http.server  # then open http://localhost:8000
 ```
 

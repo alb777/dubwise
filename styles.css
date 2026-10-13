@@ -765,6 +765,192 @@ footer a {
     font-size: 12px;
 }
 
+/* AI reader: the pill shows its state, the dialog picks who reads the ideas */
+#ai-toggle .icon {
+    color: var(--muted);
+    font-size: 13px;
+}
+
+#ai-toggle[data-state="on"] .icon {
+    background: var(--cool);
+    color: var(--on-cool);
+}
+
+#ai-toggle[data-state="busy"] .icon {
+    background: var(--accent);
+    color: var(--on-accent);
+    animation: thinking 0.8s ease-in-out infinite alternate;
+}
+
+#ai-toggle[data-state="error"] .icon {
+    background: var(--hot);
+    color: var(--on-hot);
+}
+
+@keyframes thinking {
+    to {
+        opacity: 0.4;
+    }
+}
+
+.ai-dialog {
+    width: min(540px, calc(100vw - 32px));
+    max-height: calc(100vh - 32px);
+    padding: 0;
+    color: var(--text);
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    box-shadow: 0 24px 60px rgb(0 0 0 / 0.5);
+}
+
+.ai-dialog::backdrop {
+    background: rgb(0 0 0 / 0.55);
+}
+
+.ai-dialog > form {
+    display: grid;
+    gap: 12px;
+    padding: 0 18px 18px;
+}
+
+.ai-dialog > form::before {
+    content: "";
+    height: 6px;
+    margin: 0 -18px;
+    background: var(--flag);
+}
+
+.ai-dialog header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.ai-dialog h2 {
+    margin: 0;
+    font-size: 16px;
+    letter-spacing: 0.08em;
+}
+
+.ai-dialog h2 span {
+    color: var(--accent);
+}
+
+.ai-lead,
+.ai-note {
+    margin: 0;
+    color: var(--muted);
+}
+
+.ai-providers {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    border: none;
+}
+
+.ai-providers legend {
+    margin-bottom: 8px;
+    padding: 0;
+    font-weight: bold;
+}
+
+.ai-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px;
+    background: var(--panel-2);
+    border: 1px solid var(--control-line);
+    border-radius: 10px;
+    cursor: pointer;
+}
+
+.ai-option[hidden] {
+    display: none;
+}
+
+.ai-option:has(input:checked) {
+    border-color: var(--accent);
+}
+
+.ai-option input {
+    margin-top: 3px;
+    accent-color: var(--accent);
+}
+
+.ai-option strong {
+    display: block;
+}
+
+.ai-option small {
+    color: var(--muted);
+}
+
+/* the fields of a provider only show while it is picked */
+.ai-fields {
+    display: grid;
+    gap: 8px;
+    padding: 0 4px 4px 34px;
+}
+
+.ai-providers:not(:has(input[value="browser"]:checked)) [data-for="browser"],
+.ai-providers:not(:has(input[value="endpoint"]:checked)) [data-for="endpoint"] {
+    display: none;
+}
+
+.ai-fields label {
+    display: grid;
+    grid-template-columns: 70px minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+    color: var(--muted);
+}
+
+.ai-fields input {
+    min-width: 0;
+    padding: 6px 8px;
+    background: var(--panel-2);
+    border: 1px solid var(--control-line);
+    border-radius: 6px;
+}
+
+.ai-fields progress {
+    width: 100%;
+    accent-color: var(--accent);
+}
+
+.ai-status {
+    min-height: 1.4em;
+    margin: 0;
+    color: var(--muted);
+}
+
+.ai-status.ok {
+    color: var(--cool);
+}
+
+.ai-status.err {
+    color: var(--hot);
+}
+
+.ai-dialog footer {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.ai-dialog .primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--on-accent);
+    font-weight: bold;
+}
+
 #guide-toggle[aria-expanded="true"] {
     background: var(--accent);
     color: var(--on-accent);
@@ -900,7 +1086,8 @@ footer a {
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .spotlight {
+    .spotlight,
+    #ai-toggle .icon {
         animation: none;
     }
 }

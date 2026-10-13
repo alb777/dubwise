@@ -37,7 +37,8 @@ async function serve() {
  * Open `path` in a fresh headless browser and hand `fn` a small page API.
  * @param {string} path page path from the repo root, such as "/" or "/tests/browser/check.html", or a full URL
  * @param {(page: { evaluate: (expression: string) => Promise<any>, send: (method: string, params?: object) => Promise<any>, on: (method: string, handler: (params: any) => void) => void, errors: string[], wait: (ms: number) => Promise<void> }) => Promise<void>} fn
- * @param {{ setup?: (send: (method: string, params?: object) => Promise<any>) => Promise<void> }} [options]
+ * @param {{ setup?: (send: (method: string, params?: object) => Promise<any>) => Promise<void>, gpu?: boolean,
+ *   profile?: string }} [options]
  *   `setup` runs after the tab opens and before it navigates, for viewport sizes and injected scripts
  */
 export async function withPage(path, fn, options = {}) {
@@ -46,7 +47,12 @@ export async function withPage(path, fn, options = {}) {
         process.env.BROWSER ?? "brave",
         [
             "--headless=new",
-            "--disable-gpu",
+            // WebGPU in a headless browser needs Vulkan and the "unsafe" switch; everything else runs without a GPU.
+            ...(options.gpu
+                ? ["--enable-unsafe-webgpu", "--enable-features=Vulkan", "--use-angle=vulkan"]
+                : ["--disable-gpu"]),
+            // A profile that outlives the run keeps downloads, such as an AI model, for the next one.
+            ...(options.profile ? [`--user-data-dir=${options.profile}`] : []),
             "--autoplay-policy=no-user-gesture-required",
             "--remote-debugging-port=0",
             "about:blank",

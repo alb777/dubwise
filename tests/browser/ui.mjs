@@ -1,8 +1,36 @@
 // Loads the app in a headless browser, clicks and types like a player, and saves screenshots.
 // Usage: node tests/browser/ui.mjs [screenshot-dir]   (BROWSER=chromium to pick another browser)
 import { mkdirSync, writeFileSync } from "node:fs";
+import { createServer } from "node:http";
 import { join } from "node:path";
 import { ROOT, withPage } from "./cdp.mjs";
+
+// A stand-in for an OpenAI-compatible server, so the AI reader can be tried without a model. It reads every idea
+// as a spy film, and fails on purpose while `failing` is set.
+const SPY_FILM = {
+    reading: "spy film: tense, dark, cinematic",
+    style: "steppers",
+    tempo: "lively",
+    mode: "minor",
+    echo: "high",
+    density: "busy",
+    bass: "root",
+};
+let aiRequests = 0;
+let failing = false;
+const aiServer = createServer((request, response) => {
+    response.setHeader("access-control-allow-origin", "*");
+    response.setHeader("access-control-allow-headers", "content-type, authorization");
+    if (request.method === "OPTIONS") return response.writeHead(204).end();
+    aiRequests++;
+    request.resume();
+    if (failing)
+        return response.writeHead(503, { "content-type": "application/json" }).end('{"error":{"message":"busy"}}');
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(JSON.stringify({ choices: [{ message: { content: JSON.stringify(SPY_FILM) } }] }));
+});
+await new Promise((resolve) => aiServer.listen(0, "127.0.0.1", resolve));
+const aiUrl = `http://127.0.0.1:${aiServer.address().port}/v1`;
 
 const outDir = process.argv[2] ?? join(ROOT, "tests", "browser", "out");
 mkdirSync(outDir, { recursive: true });
@@ -195,6 +223,78 @@ await withPage("/", async (page) => {
     }
     await evaluate(type("theme dub"));
 
+    // The AI reader: offered when the word lists miss an idea, set up in its dialog, then reading what they miss.
+    const lines = (kind) => `[...document.querySelectorAll("#log .${kind}")].map((l) => l.textContent)`;
+    await evaluate(type("Martin Campbell style"));
+    await wait(300);
+    check(
+        "with the AI off, an idea it could read brings a hint",
+        (await evaluate(lines("dim"))).some((l) => l.includes("an AI can read ideas like this one")),
+    );
+    await evaluate("document.getElementById('ai-toggle').click()");
+    await wait(300);
+    check("the ai button opens its dialog", await evaluate("document.getElementById('ai-dialog').open"));
+    check(
+        "Chrome's model is only offered where the browser has it",
+        await evaluate("getComputedStyle(document.getElementById('ai-chrome')).display === 'none'"),
+    );
+    await evaluate(`(() => {
+        const form = document.getElementById("ai-form");
+        form.querySelector('input[value="endpoint"]').click();
+        form.elements.url.value = ${JSON.stringify(aiUrl)};
+        form.elements.url.dispatchEvent(new Event("input"));
+        form.elements.model.value = "test-model";
+    })()`);
+    await evaluate("document.getElementById('ai-try').click()");
+    await wait(500);
+    const tried = await evaluate("document.getElementById('ai-status').textContent");
+    check(
+        "a typed address picks my own address",
+        (await evaluate("document.getElementById('ai-form').elements.preset.value")) === "custom",
+    );
+    check(
+        "try shows how the AI reads an idea",
+        tried.includes("spy film") && tried.includes("steppers, lively, minor"),
+        tried,
+    );
+    const aiShot = await send("Page.captureScreenshot", { format: "png" });
+    writeFileSync(join(outDir, "ai-dialog.png"), Buffer.from(aiShot.data, "base64"));
+    await evaluate(`document.querySelector('#ai-form button[value="save"]').click()`);
+    await wait(200);
+    check(
+        "use it closes the dialog and turns the AI on",
+        !(await evaluate("document.getElementById('ai-dialog').open")) &&
+            (await evaluate("document.getElementById('ai-toggle').dataset.state")) === "on",
+    );
+    await evaluate(type("Martin Campbell style"));
+    await wait(600);
+    const read = (await evaluate(lines("ok"))).at(-1) ?? "";
+    check("the AI reads what the word lists miss", read.includes('the AI read "martin campbell" as: spy film'), read);
+    check(
+        "the riddim follows the reading",
+        (await evaluate("document.getElementById('keyinfo').textContent")).endsWith(" minor") &&
+            (await evaluate("document.getElementById('bpm').value")) >= 78,
+    );
+    // The dialog's try already read this idea, so composing it reused that reading. From here nothing should ask.
+    const asked = aiRequests;
+    await evaluate(type("again"));
+    await wait(300);
+    check("again reuses the reading instead of asking again", aiRequests === asked, aiRequests - asked);
+    await evaluate(type("a dark steppers in D minor"));
+    await wait(300);
+    check("ideas the word lists cover do not go to the AI", aiRequests === asked, aiRequests - asked);
+    failing = true;
+    await evaluate(type("ai a lighthouse in a storm"));
+    await wait(600);
+    check(
+        "when the AI fails, dubwise composes from its own reading",
+        (await evaluate(lines("err"))).at(-1)?.includes("the AI could not read it (503 busy)") &&
+            (await evaluate("document.getElementById('ai-toggle').dataset.state")) === "error",
+    );
+    failing = false;
+    await evaluate(type("ai off"));
+    check("ai off turns it off", (await evaluate("document.getElementById('ai-toggle').dataset.state")) === "off");
+
     for (const [name, width, height, mobile] of [
         ["desktop", 1280, 1000, false],
         ["phone", 390, 844, true],
@@ -222,5 +322,6 @@ await withPage("/", async (page) => {
     check("no errors while playing", page.errors.length === 0, page.errors);
 });
 
+aiServer.close();
 console.log(failures.length ? `${failures.length} check(s) failed` : `all checks passed, screenshots in ${outDir}`);
 process.exit(failures.length ? 1 : 0);

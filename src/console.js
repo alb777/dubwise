@@ -82,6 +82,8 @@ export const COMMANDS = `commands
   show                      print the riddim as text
   share                     copy a link that plays this riddim
   prompt <idea>             copy a prompt for any chat AI, then paste its answer here
+  ai                        choose an AI to read the ideas the word lists miss
+  ai <idea>, ai off         ask the AI even when every word is known, or turn it off
   theme <name>              colours: ${Object.keys(THEMES).join(", ")}
   guide                     open the guide beside the app (or press ?)
   help, notation, clear
@@ -95,13 +97,13 @@ or paste a whole riddim that starts with "dubwise 1".`;
 /**
  * @typedef {typeof CHANNELS[number]} Channel
  * @typedef {{ type: "play" | "stop" | "show" | "share" | "help" | "notation" | "clear" | "unsolo" | "again" | "undo"
- *     | "guide" }
+ *     | "guide" | "ai" | "ai-off" }
  *   | { type: "mute", channel: Channel, on: boolean }
  *   | { type: "solo" | "throw", channel: Channel }
  *   | { type: "filter", value: number }
  *   | { type: "preset", name: typeof PRESETS[number] }
  *   | { type: "theme", name: keyof typeof THEMES }
- *   | { type: "compose" | "prompt", request: string }
+ *   | { type: "compose" | "prompt", request: string, ai?: boolean }
  *   | { type: "line", line: string }
  *   | { type: "lines", lines: string[] }
  *   | { type: "riddim", text: string }
@@ -185,8 +187,9 @@ export function parseCommand(input) {
                 return error("say what you want, for example: prompt a dark steppers in D minor with lots of echo");
             return { type: "prompt", request: arg };
         case "ai":
-            if (!arg) return error("describe the riddim, for example: ai inspired by Augustus Pablo");
-            return { type: "compose", request: arg };
+            if (!arg) return { type: "ai" };
+            if (arg.toLowerCase() === "off") return { type: "ai-off" };
+            return { type: "compose", request: arg, ai: true };
     }
     if (SETTINGS.has(first)) return { type: "line", line: text };
     // A word or two that is one slip from a command is a typo, unless the composer reads something in it,

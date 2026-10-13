@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <title>dubwise AI check</title>
+    </head>
+    <body>
+        <script type="module">
+            // Reads ideas with the in-browser model, one after the other, for tests/browser/ai-model.mjs.
+            import { readIdea } from "../../src/ai.js";
+
+            window.readAll = async (size, ideas) => {
+                const results = [];
+                for (const idea of ideas) {
+                    const started = performance.now();
+                    try {
+                        const reading = await readIdea({ provider: "browser", size, url: "", model: "" }, idea, {
+                            onProgress: (fraction, text) => {
+                                window.progress = `${Math.round(fraction * 100)}% ${text}`;
+                            },
+                        });
+                        results.push({ idea, ms: Math.round(performance.now() - started), reading });
+                    } catch (error) {
+                        results.push({ idea, error: String(error?.message ?? error) });
+                    }
+                    window.progress = `${results.length}/${ideas.length} read`;
+                }
+                return results;
+            };
+        </script>
+    </body>
+</html>
