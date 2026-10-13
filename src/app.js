@@ -4,6 +4,8 @@
  * Every change, from a grid click, a slider or a console line, goes through commit(),
  * which updates the engine, the shareable URL and the screen together.
  */
+
+import { compose } from "../skills/dubwise/scripts/composer.mjs";
 import {
     chordAt,
     DRUMS,
@@ -68,6 +70,10 @@ const state = {
     /** @type {string[]} */
     history: [],
     historyAt: 0,
+    /** Riddim texts to go back to, newest last. @type {string[]} */
+    undo: [],
+    lastRequest: "",
+    take: 0,
 };
 
 /** @type {Engine | null} */
@@ -137,6 +143,23 @@ function commit(riddim) {
     render();
 }
 
+/** Keep the current riddim so "undo" can bring it back. */
+function remember() {
+    state.undo.push(state.text);
+    if (state.undo.length > 50) state.undo.shift();
+}
+
+/** Compose the last idea at the current take, load it and start playing. */
+function composeAndPlay() {
+    const result = compose(state.lastRequest, state.take);
+    if (!result.understood) return print(result.summary, "err");
+    remember();
+    loadText(result.text);
+    print(result.summary, "ok");
+    print('"again" for another version, "undo" to go back, "show" for the notation', "dim");
+    if (!sequencer?.playing) togglePlay();
+}
+
 /** @param {string} text @returns {boolean} */
 function loadText(text) {
     const result = parse(text);
@@ -189,6 +212,7 @@ function editStep(drum, step, clear) {
     const cycle = drum === "hat" ? [0, 1, 2, 3] : [0, 1, 2];
     full[step] = clear ? 0 : cycle[(cycle.indexOf(full[step]) + 1) % cycle.length];
     riddim.drums[drum] = full.every((v) => v === 0) ? [] : full;
+    remember();
     commit(riddim);
 }
 
@@ -453,14 +477,29 @@ function execute(input) {
             showOutputs();
             return;
         case "preset":
+            remember();
             void loadPreset(command.name);
             return;
+        case "compose":
+            state.lastRequest = command.request;
+            state.take = 0;
+            return composeAndPlay();
+        case "again":
+            if (!state.lastRequest) return print("describe a riddim first, then ask again for another version", "err");
+            state.take += 1;
+            return composeAndPlay();
+        case "undo": {
+            const previous = state.undo.pop();
+            if (previous === undefined) return print("nothing to undo", "err");
+            loadText(previous);
+            return print("undone", "ok");
+        }
         case "show":
             return print(state.text.trimEnd(), "dim");
         case "share":
             void copy(location.origin + location.pathname + toHash(state.text), "link copied, it opens this riddim");
             return;
-        case "ai":
+        case "prompt":
             void copy(
                 aiPrompt(command.request, state.text),
                 "prompt copied. Paste it into any AI chat, then paste its answer here (it starts with dubwise 1).",
@@ -476,6 +515,7 @@ function execute(input) {
         case "line": {
             const result = setLine(state.text, command.line);
             if (!result.riddim) return printErrors(result.errors.map((e) => ({ line: 0, message: e.message })));
+            remember();
             commit(result.riddim);
             return print("ok", "ok");
         }
@@ -486,12 +526,18 @@ function execute(input) {
                 if (!result.riddim) return printErrors([{ line: 0, message: `${line}: ${result.errors[0].message}` }]);
                 text = result.text;
             }
+            remember();
             if (loadText(text)) print("ok", "ok");
             return;
         }
-        case "riddim":
-            if (loadText(command.text)) print("riddim loaded", "ok");
+        case "riddim": {
+            const before = state.text;
+            if (loadText(command.text)) {
+                state.undo.push(before);
+                print("riddim loaded", "ok");
+            }
             return;
+        }
         case "error":
             return print(command.message, "err");
     }
@@ -611,7 +657,7 @@ document.addEventListener("keydown", (event) => {
 
 window.addEventListener("hashchange", () => loadFromLink());
 if (!loadFromLink()) void loadPreset(PRESETS[0]);
-print("dubwise is ready. Press play or space, click steps to edit, or type help.", "dim");
+print("dubwise is ready. Press play, click steps to edit, or describe a riddim: inspired by Augustus Pablo", "dim");
 requestAnimationFrame(animate);
 
 if ("serviceWorker" in navigator && location.protocol === "https:") {

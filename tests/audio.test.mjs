@@ -5,6 +5,7 @@ import { describe, it } from "node:test";
 
 import { OfflineAudioContext } from "node-web-audio-api";
 
+import { compose } from "../skills/dubwise/scripts/composer.mjs";
 import { parse } from "../skills/dubwise/scripts/notation.mjs";
 import { createEngine, TRACKS } from "../src/engine.js";
 import { echoSeconds, eventsAt, renderRiddim, stepSeconds, swingOffset } from "../src/sequencer.js";
@@ -167,6 +168,19 @@ describe("audio", () => {
         assert.ok(held > -40, `siren ${held.toFixed(1)} dBFS`);
         assert.ok(held - after > 30, `siren release ${held.toFixed(1)} vs ${after.toFixed(1)} dBFS`);
     });
+
+    for (const idea of [
+        "crie um riddim inspirado em augustus pablo",
+        "dub techno em Fm",
+        "steppers in E minor heavy bass",
+    ]) {
+        it(`mixes a composed riddim without clipping: ${idea}`, async () => {
+            const result = measure(await render(riddimOf(compose(idea).text), { seconds: 6 }));
+            assert.equal(result.nan, false);
+            assert.ok(result.peak <= 1, `peak ${result.peak}`);
+            assert.ok(result.db > -35 && result.db < -8, `rms ${result.db.toFixed(1)} dBFS`);
+        });
+    }
 
     it("renders the same audio twice", async () => {
         const a = await render(preset("rockers"), { seconds: 1.5 });

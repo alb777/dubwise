@@ -9,6 +9,7 @@
         <script type="module">
             // Renders every preset with the browser's own Web Audio and writes levels into the page,
             // so a headless browser can check the engine where it will really run.
+            import { compose } from "../../skills/dubwise/scripts/composer.mjs";
             import { parse } from "../../skills/dubwise/scripts/notation.mjs";
             import { createEngine } from "../../src/engine.js";
             import { renderRiddim } from "../../src/sequencer.js";
@@ -36,7 +37,12 @@
                     const buffer = await renderRiddim(OfflineAudioContext, (c) => createEngine(c), riddim, { seconds: 4 });
                     result[name] = measure(buffer);
                 }
-                result.ok = ["one-drop", "rockers", "steppers"].every((n) => {
+                for (const idea of ["crie um riddim inspirado em augustus pablo", "steppers in E minor heavy bass"]) {
+                    const { riddim } = parse(compose(idea).text);
+                    const buffer = await renderRiddim(OfflineAudioContext, (c) => createEngine(c), riddim, { seconds: 6 });
+                    result[idea] = measure(buffer);
+                }
+                result.ok = Object.keys(result).filter((k) => k !== "userAgent").every((n) => {
                     const m = result[n];
                     return !m.nan && m.peak <= 1 && m.db > -35 && m.db < -8;
                 });

@@ -64,6 +64,33 @@ await withPage("/", async (page) => {
     await evaluate(type("help"));
     check("help prints the commands", (await evaluate(lastLog))?.text.startsWith("commands"));
 
+    await wait(400); // the share link updates 250 ms after the last edit
+    const before = await evaluate("decodeURIComponent(location.hash)");
+    await evaluate(type("pla"));
+    await wait(400);
+    check("a typo is declined, not composed", (await evaluate(lastLog))?.kind === "err");
+    check("a typo leaves the riddim alone", (await evaluate("decodeURIComponent(location.hash)")) === before);
+
+    await evaluate(type("crie um riddim inspirado em augustus pablo"));
+    await wait(400);
+    const composed = await evaluate(
+        `[...document.querySelectorAll("#log .ok")].map((l) => l.textContent).find((t) => t.includes("inspired by"))`,
+    );
+    check("free text composes a riddim", composed?.includes("inspired by Augustus Pablo"), composed);
+    check(
+        "the composed riddim starts playing",
+        (await evaluate("document.getElementById('play').getAttribute('aria-pressed')")) === "true",
+    );
+    check(
+        "the composed riddim is rockers",
+        (await evaluate(`document.querySelector('.cell[data-drum="kick"][data-step="0"]').dataset.value`)) === "1",
+    );
+    await evaluate("document.getElementById('play').click()");
+
+    await evaluate(type("undo"));
+    await wait(400);
+    check("undo brings the previous riddim back", (await evaluate("decodeURIComponent(location.hash)")) === before);
+
     await evaluate(type("mute bass"));
     check(
         "mute from the console lights the strip",

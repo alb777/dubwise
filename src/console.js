@@ -15,22 +15,26 @@ export const COMMANDS = `commands
   throw <ch>                send a channel into the echo for one beat
   filter <-1 to 1>          DJ filter: -1 dark, 0 open, 1 thin
   preset <name>             ${PRESETS.join(", ")}
+  again                     another version of the last idea
+  undo                      take back the last change
   show                      print the riddim as text
   share                     copy a link that plays this riddim
-  ai <idea>                 copy a prompt for any AI built from your idea, then paste its answer here
+  prompt <idea>             copy a prompt for any chat AI, then paste its answer here
   help, notation, clear
 
+Describe a riddim in your own words and dubwise writes it, offline:
+  inspired by Augustus Pablo / a dark steppers in D minor / um one drop lento com muito eco
 Type a notation line (bpm 76, kick x...x...x...x...) to change the riddim while it plays,
 or paste a whole riddim that starts with "dubwise 1".`;
 
 /**
  * @typedef {typeof CHANNELS[number]} Channel
- * @typedef {{ type: "play" | "stop" | "show" | "share" | "help" | "notation" | "clear" | "unsolo" }
+ * @typedef {{ type: "play" | "stop" | "show" | "share" | "help" | "notation" | "clear" | "unsolo" | "again" | "undo" }
  *   | { type: "mute", channel: Channel, on: boolean }
  *   | { type: "solo" | "throw", channel: Channel }
  *   | { type: "filter", value: number }
  *   | { type: "preset", name: typeof PRESETS[number] }
- *   | { type: "ai", request: string }
+ *   | { type: "compose" | "prompt", request: string }
  *   | { type: "line", line: string }
  *   | { type: "lines", lines: string[] }
  *   | { type: "riddim", text: string }
@@ -75,6 +79,8 @@ export function parseCommand(input) {
         case "notation":
         case "clear":
         case "unsolo":
+        case "again":
+        case "undo":
             return { type: word };
         case "mute":
         case "unmute":
@@ -95,13 +101,17 @@ export function parseCommand(input) {
             if (!name) return error(`presets: ${PRESETS.join(", ")}`);
             return { type: "preset", name: /** @type {typeof PRESETS[number]} */ (name) };
         }
-        case "ai":
+        case "prompt":
             if (!arg)
-                return error("tell the AI what you want, for example: ai a dark steppers in D minor with lots of echo");
-            return { type: "ai", request: arg };
+                return error("say what you want, for example: prompt a dark steppers in D minor with lots of echo");
+            return { type: "prompt", request: arg };
+        case "ai":
+            if (!arg) return error("describe the riddim, for example: ai inspired by Augustus Pablo");
+            return { type: "compose", request: arg };
     }
     if (SETTINGS.has(first)) return { type: "line", line: text };
-    return error(`unknown command "${first}"; type help`);
+    // Anything else is an idea for the composer, which declines text it finds nothing in.
+    return { type: "compose", request: text };
 }
 
 /**

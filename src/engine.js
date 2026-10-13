@@ -4,6 +4,7 @@
  * a tape echo, a spring reverb and a DJ-style filter on the master.
  * Runs on an AudioContext or an OfflineAudioContext.
  */
+import { mulberry32 } from "../skills/dubwise/scripts/composer.mjs";
 import { midiToFrequency } from "../skills/dubwise/scripts/notation.mjs";
 
 export const TRACKS = /** @type {const} */ (["kick", "rim", "hat", "bass", "skank", "siren"]);
@@ -31,21 +32,6 @@ const FILTER_LOWPASS_MIN = 120;
 const FILTER_HIGHPASS_MAX = 6000;
 
 /**
- * Deterministic pseudo-random numbers in [0, 1), so renders are reproducible.
- * @param {number} seed
- */
-export function mulberry32(seed) {
-    let a = seed >>> 0;
-    return () => {
-        a = (a + 0x6d2b79f5) >>> 0;
-        let t = a;
-        t = Math.imul(t ^ (t >>> 15), t | 1);
-        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-    };
-}
-
-/**
  * Spring reverb impulse response: decaying noise through a feedback comb, which gives the metallic
  * flutter of a spring tank. Left and right use different comb lengths for width.
  * @param {BaseAudioContext} context
@@ -65,6 +51,23 @@ function springImpulse(context, random) {
         }
     }
     return buffer;
+}
+
+/**
+ * Safety clipper for the very end of the chain: unity gain up to 0.8, then a smooth knee that never
+ * passes full scale. Its input is scaled down 4x so the curve covers peaks up to +12 dB.
+ * Compressors differ between Web Audio implementations: node-web-audio-api let a 2.15 transient
+ * through on a bass note where Chromium stayed at 0.72, so the output must not trust the limiter alone.
+ */
+const CLIP_INPUT_RANGE = 4;
+function safetyCurve() {
+    const curve = new Float32Array(4097);
+    for (let i = 0; i < curve.length; i++) {
+        const x = ((i / (curve.length - 1)) * 2 - 1) * CLIP_INPUT_RANGE;
+        const size = Math.abs(x);
+        curve[i] = Math.sign(x) * (size <= 0.8 ? size : 0.8 + 0.2 * Math.tanh((size - 0.8) / 0.2));
+    }
+    return curve;
 }
 
 /**
@@ -105,7 +108,12 @@ export function createEngine(context, { seed = 7 } = {}) {
     limiter.release.value = 0.15;
     const master = context.createGain();
     master.gain.value = 0.85;
-    mixBus.connect(lowpass).connect(highpass).connect(limiter).connect(master).connect(context.destination);
+    const clipIn = context.createGain();
+    clipIn.gain.value = 1 / CLIP_INPUT_RANGE;
+    const clipper = context.createWaveShaper();
+    clipper.curve = safetyCurve();
+    mixBus.connect(lowpass).connect(highpass).connect(limiter).connect(master).connect(clipIn).connect(clipper);
+    clipper.connect(context.destination);
 
     // Tape echo: delay -> tone -> low cut -> tape saturation -> feedback -> delay.
     const echoIn = context.createGain();

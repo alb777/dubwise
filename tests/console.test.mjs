@@ -36,7 +36,14 @@ describe("parseCommand", () => {
         ["throw siren", { type: "throw", channel: "siren" }],
         ["filter -0.5", { type: "filter", value: -0.5 }],
         ["preset steppers", { type: "preset", name: "steppers" }],
-        ["ai a dark steppers", { type: "ai", request: "a dark steppers" }],
+        ["ai a dark steppers", { type: "compose", request: "a dark steppers" }],
+        ["prompt a dark steppers", { type: "prompt", request: "a dark steppers" }],
+        [
+            "crie um riddim inspirado em augustus pablo",
+            { type: "compose", request: "crie um riddim inspirado em augustus pablo" },
+        ],
+        ["again", { type: "again" }],
+        ["undo", { type: "undo" }],
         ["bpm 76", { type: "line", line: "bpm 76" }],
         ["kick x...x...x...x...", { type: "line", line: "kick x...x...x...x..." }],
         ["bpm 76\nkey D minor", { type: "lines", lines: ["bpm 76", "key D minor"] }],
@@ -52,8 +59,8 @@ describe("parseCommand", () => {
         ["filter 3", /from -1 to 1/],
         ["filter", /from -1 to 1/],
         ["preset jungle", /presets:/],
-        ["ai", /tell the AI/],
-        ["dance", /unknown command "dance"/],
+        ["ai", /describe the riddim/],
+        ["prompt", /say what you want/],
     ];
     for (const [input, message] of errors) {
         it(`rejects ${JSON.stringify(input)}`, () => {
@@ -66,7 +73,20 @@ describe("parseCommand", () => {
 
 describe("help and AI prompt", () => {
     it("lists every command the parser knows", () => {
-        for (const word of ["play", "mute", "solo", "throw", "filter", "preset", "show", "share", "ai", "clear"]) {
+        for (const word of [
+            "play",
+            "mute",
+            "solo",
+            "throw",
+            "filter",
+            "preset",
+            "again",
+            "undo",
+            "show",
+            "share",
+            "prompt",
+            "clear",
+        ]) {
             assert.match(COMMANDS, new RegExp(`\\b${word}\\b`));
         }
     });

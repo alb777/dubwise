@@ -23,7 +23,7 @@ describe("offline app", () => {
             ...readdirSync(join(ROOT, "skills/dubwise/assets/riddims")).map(
                 (n) => `skills/dubwise/assets/riddims/${n}`,
             ),
-            "skills/dubwise/scripts/notation.mjs",
+            ...readdirSync(join(ROOT, "skills/dubwise/scripts")).map((name) => `skills/dubwise/scripts/${name}`),
         ];
         for (const path of expected) assert.ok(precache.includes(path), `${path} is not precached`);
     });

@@ -13,6 +13,7 @@ const PRECACHE = [
     "src/console.js",
     "src/engine.js",
     "src/sequencer.js",
+    "skills/dubwise/scripts/composer.mjs",
     "skills/dubwise/scripts/notation.mjs",
     "skills/dubwise/assets/riddims/one-drop.txt",
     "skills/dubwise/assets/riddims/rockers.txt",

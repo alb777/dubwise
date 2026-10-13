@@ -1,6 +1,6 @@
 # dubwise
 
-A dub sound system in your browser. Synthesized riddims, a tape echo, a spring reverb, a siren, and a console you can live-code or hand to an AI. No samples, no account, no install, and it works offline.
+A dub sound system in your browser. Describe a riddim in your own words and it plays: synthesized drums and bass, a tape echo, a spring reverb, a siren, and a console you can live-code. No samples, no account, no install, no AI service, and it works offline.
 
 ![dubwise playing a one drop riddim](docs/screenshot.png)
 
@@ -12,7 +12,8 @@ A dub sound system in your browser. Synthesized riddims, a tape echo, a spring r
 4. **Edit the pattern.** Click steps in the grid; shift-click clears one.
 5. **Live-code it.** Type `bpm 76` or `kick x...x...x...x...` in the console and the riddim changes on the next step.
 6. **Share it.** The whole riddim lives in the link, so `share` copies a URL that plays exactly what you hear.
-7. **Ask any AI.** `ai a dark steppers in D minor with lots of echo` copies a prompt for any chat AI. Paste its answer back into the console and it plays.
+7. **Describe it.** Type an idea in English, Portuguese or Spanish (`inspired by Augustus Pablo`, `a dark steppers in D minor`, `um one drop lento com muito eco`) and dubwise writes the riddim on your machine. `again` gives another version, `undo` goes back.
+8. **Ask any AI.** `prompt <idea>` copies a prompt for any chat AI. Paste its answer back into the console and it plays.
 
 ## The console
 
@@ -23,8 +24,10 @@ solo <ch>, unsolo         hear one channel alone, or all again
 throw <ch>                send a channel into the echo for one beat
 filter <-1 to 1>          DJ filter: -1 dark, 0 open, 1 thin
 preset <name>             one-drop, rockers, steppers
+again, undo               another version of the last idea, or back one change
 show, share, help, notation, clear
-ai <idea>                 a prompt for any AI, built from your idea
+prompt <idea>             a prompt for any chat AI, built from your idea
+<anything else>           an idea for the composer: inspired by King Tubby, steppers at 76 bpm...
 ```
 
 Click a row name in the grid (for example **bass**) to pull that line into the console for editing.
@@ -50,9 +53,11 @@ spring 0.3
 
 Drums take 16 steps per bar (`.` rest, `x` hit, `X` accent, `o` open hat). The bass and the chords use scale degrees, so a riddim moves to any key with one line. Type `notation` in the console for the full reference, or read `SPEC` in [notation.mjs](skills/dubwise/scripts/notation.mjs).
 
-## About the AI part
+## How ideas become riddims
 
-dubwise is built to be open and to run on your machine. The `ai` command does not call any service: it builds a prompt you can paste into the AI you already use. Riddims can take their tempo, groove and mood from songs or artists you mention, but the prompt tells the AI never to copy a real song's bassline or melody.
+The composer runs in the page, with no model and no network. It reads the idea for a style (one drop, rockers, steppers), a tempo (`80 bpm`, `lento`), a key (`in D minor`, `em Ré menor`), a mood (dark, happy, lots of echo, minimal, melodic bass) and artist or scene references, then writes drums, chords and a bass line that follow the rules of the style. The same idea always gives the same riddim, and `again` walks through other versions.
+
+Artist references map to broad style traits only: King Tubby means heavy echo and channels dropping out, Jah Shaka means militant steppers. dubwise holds no songs, so it never copies a real bassline or melody, and a name it does not know is said out loud instead of guessed at. The `prompt` command asks the same of any chat AI you hand the idea to.
 
 ## Offline
 
