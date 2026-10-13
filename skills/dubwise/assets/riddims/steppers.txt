@@ -1,0 +1,12 @@
+dubwise 1
+# Steppers: a kick on every beat, rim on 3, hats on the offbeat eighths.
+bpm 74
+key A minor
+kick   x...x...x...x...
+rim    ........x.......
+hat    ..x...x...x...x.
+skank  ....x.......x...
+chords 1 4 | 5 1
+bass   1 . . 1 1 . . . 1 . . 1 1 . 3 . | 4 . . 4 4 . . . 5 . . 5 5 . 3 .
+echo   3/16 0.6
+spring 0.35

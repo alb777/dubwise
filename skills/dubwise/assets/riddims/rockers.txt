@@ -1,0 +1,12 @@
+dubwise 1
+# Rockers: kick on beats 1 and 3, busy hats, a bass that drives on the root.
+bpm 76
+key A minor
+kick   x.......x....... | x.......x.......
+rim    ........x....... | ........x.......
+hat    x.xxx.xxx.xxx.xx | x.xxx.xxx.xxx.xo
+skank  ....x.......x... | ....x.......x...
+chords 1 | 7
+bass   1 . . . 1 . 1 . 5, . . . 7, . 1 . | 7, . . . 7, . 7, . 2 . . . 1 . 7, .
+echo   1/4 0.5
+spring 0.25

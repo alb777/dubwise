@@ -1,0 +1,13 @@
+dubwise 1
+# One drop: kick and rim land together on beat 3, beat 1 stays empty.
+bpm 72
+key A minor
+swing 0.15
+kick   ........x....... | ........x.......
+rim    ........x....... | ........x.......
+hat    x.x.x.x.x.x.x.x. | x.x.x.x.x.x.o.x.
+skank  ....x.......x... | ....x.......x...
+chords 1 | 4
+bass   . . 1 . . . 1 . 3 . . . 5 . 4 . | . . 4 . . . 4 . 6 . . . 5 - 3 .
+echo   3/16 0.55
+spring 0.3
