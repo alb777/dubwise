@@ -1,7 +1,7 @@
 // @ts-check
 /**
- * Style traits commonly associated with artists, scenes and eras, checked against their public Wikipedia
- * summaries. Broad strokes, no songs.
+ * Style traits commonly associated with artists, scenes and eras, checked against public sources: Wikipedia
+ * summaries, or press and release pages for scenes too new for Wikipedia. Broad strokes, no songs.
  *
  * Aliases are written the way the composer normalizes an idea: lower case, no accents, punctuation as spaces.
  * Words people use for other things, such as "culture", "mala" or "gentleman", are never aliases.
@@ -1099,6 +1099,93 @@ export const ARTISTS = [
         density: "normal",
         bass: "melodic",
         traits: "São Paulo reggae, melodic and easygoing",
+    },
+
+    // São Paulo dancehall, from press on the scene and release pages.
+    {
+        name: "dancehall paulista",
+        aliases: [
+            "dancehall de sao paulo",
+            "dancehall em sao paulo",
+            "dancehall de quebrada",
+            "sao paulo dancehall",
+            "dancehall paulista",
+            "dancehall em sp",
+            "dancehall sp",
+        ],
+        style: "rockers",
+        bpm: 96,
+        mode: "minor",
+        echo: "low",
+        density: "busy",
+        bass: "root",
+        traits: "São Paulo's dancehall of sound systems and parties, modern and made to dance",
+    },
+    {
+        name: "Emcee Lê",
+        aliases: ["more fya club", "emcee le", "emecelee", "more fya"],
+        style: "rockers",
+        bpm: 94,
+        mode: "minor",
+        echo: "mid",
+        density: "busy",
+        bass: "root",
+        traits: "Osasco MC who went from rap to dancehall, with the More Fya Club sound system",
+    },
+    {
+        name: "Liemy irie",
+        aliases: ["liemy irie", "liemy"],
+        style: "rockers",
+        bpm: 98,
+        mode: "minor",
+        echo: "low",
+        density: "busy",
+        bass: "root",
+        traits: "modern dancehall sung in Portuguese",
+    },
+    {
+        name: "Bonsusound",
+        aliases: ["bonsusound", "vitoria janes"],
+        style: "rockers",
+        bpm: 94,
+        mode: "minor",
+        echo: "mid",
+        density: "busy",
+        bass: "root",
+        traits: "Vitória Janes' sound system from Bom Sucesso, Guarulhos",
+    },
+    {
+        name: "Fresh! Dancehall",
+        aliases: ["fresh dancehall"],
+        style: "rockers",
+        bpm: 92,
+        mode: "minor",
+        echo: "low",
+        density: "busy",
+        bass: "root",
+        traits: "São Paulo's long-running party of dancehall, digital and reggae",
+    },
+    {
+        name: "Fluxo Dancehall",
+        aliases: ["fluxo dancehall"],
+        style: "rockers",
+        bpm: 96,
+        mode: "minor",
+        echo: "low",
+        density: "busy",
+        bass: "root",
+        traits: "a dancehall party in São Paulo's East Zone",
+    },
+    {
+        name: "Dance Machine Sound System",
+        aliases: ["dance machine sound system", "dance machine sound"],
+        style: "rockers",
+        bpm: 96,
+        mode: "minor",
+        echo: "mid",
+        density: "busy",
+        bass: "root",
+        traits: "a sound system on São Paulo's dancehall nights, such as Fuego Dancehall",
     },
 
     // Poland.

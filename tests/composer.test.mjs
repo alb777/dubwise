@@ -276,6 +276,13 @@ describe("references and images", () => {
             ["o som das radiolas de São Luís", { artist: "reggae do Maranhão", unknown: [] }],
             ["nyabinghi drums at midnight", { artist: "nyabinghi", mode: "minor", unknown: [] }],
             ["um dub psicodélico pra viajar", { echo: "high", unknown: [] }],
+            [
+                "um dancehall paulista tipo Liemy irie",
+                { artist: "dancehall paulista", mixArtist: "Liemy irie", unknown: [] },
+            ],
+            ["dancehall de São Paulo pra dançar", { artist: "dancehall paulista", density: "busy", unknown: [] }],
+            ["Emecelee", { artist: "Emcee Lê", unknown: [] }],
+            ["Fresh! Dancehall meets Bonsusound", { artist: "Fresh! Dancehall", mixArtist: "Bonsusound", unknown: [] }],
             ["Martin Campbell style", { artist: undefined, unknown: ["martin campbell"] }],
         ];
         for (const [idea, expected] of corpus) {
