@@ -93,9 +93,27 @@ describe("composing with a reading", () => {
     });
 
     it("lets a known artist beat the reading", () => {
-        const { riddim } = riddimWith("King Tubby meets Martin Campbell", { ...SPY_FILM, echo: "low" });
+        const { riddim } = riddimWith("King Tubby, Martin Campbell style", { ...SPY_FILM, echo: "low" });
         assert.equal(riddim.drums.kick[0], 0, "one drop drums from King Tubby");
         assert.equal(riddim.echo.feedback, 0.65, "wide echo from King Tubby");
+    });
+
+    it("gives an unknown name linked to a known one its own role", () => {
+        const lead = riddimWith("Martin Campbell meets King Tubby", SPY_FILM);
+        for (const beat of [0, 4, 8, 12])
+            assert.equal(lead.riddim.drums.kick[beat], 1, "steppers drums from the reading");
+        assert.equal(lead.riddim.echo.feedback, 0.65, "wide echo from King Tubby");
+        assert.match(lead.result.summary, /drums and tempo from the AI's reading, echo and bass from King Tubby/);
+        const mix = riddimWith("King Tubby com Martin Campbell", { ...SPY_FILM, echo: "low", mode: "major" });
+        assert.equal(mix.riddim.drums.kick[0], 0, "one drop drums from King Tubby");
+        assert.equal(mix.riddim.echo.feedback, 0.35, "dry echo from the reading");
+        assert.equal(mix.riddim.key.mode, "major");
+        assert.match(mix.result.summary, /drums and tempo from King Tubby .*, echo and bass from the AI's reading/);
+    });
+
+    it("keeps the known name in charge when there is no reading", () => {
+        const { riddim } = riddimWith("Martin Campbell meets King Tubby", null);
+        assert.equal(riddim.drums.kick[0], 0, "King Tubby leads without an AI");
     });
 
     it("stays the same for the same idea, take and reading", () => {

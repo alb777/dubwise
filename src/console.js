@@ -2,7 +2,7 @@
 /**
  * The dub console: turns what the player types into commands. Pure, so the tests can drive it.
  */
-import { readIntent } from "../skills/dubwise/scripts/composer.mjs";
+import { editDistance, readIntent } from "../skills/dubwise/scripts/composer.mjs";
 import { DRUMS, SPEC } from "../skills/dubwise/scripts/notation.mjs";
 
 export const CHANNELS = /** @type {const} */ (["kick", "rim", "hat", "bass", "skank", "siren"]);
@@ -42,21 +42,6 @@ const COMMAND_WORDS = [
     "manual",
 ];
 
-/** Edits between two words, a swap of neighbours counting as one, so "stpo" is one edit from "stop". */
-function distance(/** @type {string} */ a, /** @type {string} */ b) {
-    const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
-    for (let j = 1; j <= b.length; j++) d[0][j] = j;
-    for (let i = 1; i <= a.length; i++) {
-        for (let j = 1; j <= b.length; j++) {
-            const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-            d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + cost);
-            if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1])
-                d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
-        }
-    }
-    return d[a.length][b.length];
-}
-
 /** The command a word is one slip away from (two for long words), if any. @param {string} word */
 function nearestCommand(word) {
     if (word.length < 3) return undefined;
@@ -64,7 +49,7 @@ function nearestCommand(word) {
     let best;
     let bestDistance = limit + 1;
     for (const command of COMMAND_WORDS) {
-        const edits = distance(word, command);
+        const edits = editDistance(word, command);
         if (edits < bestDistance) [best, bestDistance] = [command, edits];
     }
     return best;

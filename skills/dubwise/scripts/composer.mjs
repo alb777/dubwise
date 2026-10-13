@@ -19,10 +19,12 @@ import { bassMidi, parse, STEPS_PER_BAR } from "./notation.mjs";
  *   density: Density, bass: BassMove, traits: string }} Artist
  * @typedef {{ style?: Style, bpm?: number, tempo?: "slow" | "fast", root?: string, mode?: Mode, echo?: Amount,
  *   density?: Density, bass?: BassMove, artist?: Artist, mixArtist?: Artist, matched: string[],
- *   unknown: string[] }} Intent
+ *   unknown: string[], guessed: { typed: string, name: string }[], blend?: "lead" | "mix" }} Intent
  * `artist` is the first name in the idea and sets drums and tempo; `mixArtist`, a second name as in
  * "Iration Steppas meets King Tubby", sets echo, bass and mood. `unknown` holds the phrases nothing
- * here understood, such as "martin campbell" in "Martin Campbell style".
+ * here understood, such as "martin campbell" in "Martin Campbell style". `guessed` lists names typed with a slip,
+ * such as "lemi irie" for Liemy irie. `blend` is the role an unknown name takes next to a known one, as in
+ * "Chitãozinho e Xororó meets Lee Perry": an AI's reading of it then plays that role.
  * @typedef {Pick<Intent, "style" | "tempo" | "mode" | "echo" | "density" | "bass">} Feel
  * @typedef {import("./intent.mjs").Reading} Reading
  */
@@ -485,6 +487,8 @@ const IMAGERY = [
         ),
     },
 ];
+/** Every word the composer knows, which a typo in a name is never taken for. */
+const VOCABULARY = new Set([...Object.values(WORDS).flat(), ...IMAGERY.flatMap((image) => image.words), ...FILLER]);
 /** Intent fields that steer the riddim. Any one of them means the idea was understood in part. */
 const STEERING = /** @type {const} */ (["style", "bpm", "tempo", "root", "mode", "echo", "density", "bass", "artist"]);
 const SOLFEGE = /** @type {Record<string, string>} */ ({
@@ -590,7 +594,7 @@ function has(haystack, phrase) {
 export function readIntent(request) {
     const text = normalize(request);
     /** @type {Intent} */
-    const intent = { matched: [], unknown: [] };
+    const intent = { matched: [], unknown: [], guessed: [] };
     // Artist names are taken out first, so "Iration Steppas" does not also read as the steppers style.
     let words = text;
     /** @param {keyof typeof WORDS} meaning */
@@ -608,6 +612,15 @@ export function readIntent(request) {
         if (!has(words, alias)) continue;
         if (!named.some((n) => n.artist === artist)) named.push({ artist, alias, at: words.indexOf(` ${alias} `) });
         words = words.replace(` ${alias} `, ` ${"|".padEnd(alias.length)} `);
+    }
+    // A name typed with a slip, like "lemi irie" for Liemy irie, still counts, and the reply says how it was read.
+    for (const { artist, alias } of ALIASES) {
+        if (named.some((n) => n.artist === artist)) continue;
+        const typed = nearAlias(words, alias);
+        if (!typed) continue;
+        named.push({ artist, alias: typed, at: words.indexOf(` ${typed} `) });
+        intent.guessed.push({ typed, name: artist.name });
+        words = words.replace(` ${typed} `, ` ${"|".padEnd(typed.length)} `);
     }
     named.sort((a, b) => a.at - b.at);
     for (const { alias } of named) intent.matched.push(alias);
@@ -649,7 +662,65 @@ export function readIntent(request) {
     }
     found("generic");
     intent.unknown = unknownPhrases(words, intent.matched);
+    intent.blend = blendRole(words, named, intent.matched);
     return intent;
+}
+
+/** Edits between two words, a swap of neighbours counting as one, so "stpo" is one edit from "stop". */
+export function editDistance(/** @type {string} */ a, /** @type {string} */ b) {
+    const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
+    for (let j = 1; j <= b.length; j++) d[0][j] = j;
+    for (let i = 1; i <= a.length; i++) {
+        for (let j = 1; j <= b.length; j++) {
+            const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+            d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + cost);
+            if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1])
+                d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
+        }
+    }
+    return d[a.length][b.length];
+}
+
+/**
+ * The words of an idea that name an artist with a slip of the keyboard, if any. A one-word name of six letters or
+ * more may be one edit off. In a longer name every word but one must be exact, and that one may be two edits off.
+ * First letters must agree and words the composer already knows never count, which keeps "foundation" from reading
+ * as Groundation.
+ * @param {string} words normalized idea with exact names blanked out @param {string} alias
+ * @returns {string | undefined}
+ */
+function nearAlias(words, alias) {
+    const wanted = alias.split(" ");
+    if (wanted.length === 1 && alias.length < 6) return undefined;
+    const tokens = words.split(" ").filter(Boolean);
+    for (let i = 0; i + wanted.length <= tokens.length; i++) {
+        const typed = tokens.slice(i, i + wanted.length);
+        const off = typed.filter((word, k) => word !== wanted[k]);
+        if (off.length !== 1 || typed.some((word, k) => word[0] !== wanted[k][0] || word === "|")) continue;
+        const k = typed.indexOf(off[0]);
+        if (VOCABULARY.has(off[0]) || wanted[k].length < 4) continue;
+        if (editDistance(off[0], wanted[k]) <= (wanted.length === 1 ? 1 : 2)) return typed.join(" ");
+    }
+    return undefined;
+}
+
+/** Words that link a lead and a mix, as in "X meets Y" or "X com Y". */
+const LINKS = / (meets|x|vs|versus|with|com|con|feat|ft|featuring|encontra) /g;
+
+/**
+ * When an idea links one known name with words this composer does not know, as in "Chitãozinho e Xororó meets
+ * Lee Perry", the role the unknown words take: "lead" before the link, "mix" after it.
+ * @param {string} words @param {{ at: number }[]} named @param {string[]} matched
+ * @returns {"lead" | "mix" | undefined}
+ */
+function blendRole(words, named, matched) {
+    if (named.length !== 1) return undefined;
+    for (const link of words.matchAll(LINKS)) {
+        const at = link.index ?? 0;
+        if (at < named[0].at && unknownPhrases(`${words.slice(0, at)} `, matched).length) return "lead";
+        if (at > named[0].at && unknownPhrases(` ${words.slice(at + link[0].length)}`, matched).length) return "mix";
+    }
+    return undefined;
 }
 
 /**
@@ -784,8 +855,10 @@ function bassBar(random, style, density, move, chord, nextChord, key) {
  */
 export function composeIntent(intent, seed, suggestion = {}) {
     const random = mulberry32(seed);
-    const artist = intent.artist;
-    const mix = intent.mixArtist ?? artist;
+    // With a reading, unknown words linked to a known name take their own role and the reading plays it.
+    const blend = Object.keys(suggestion).length ? intent.blend : undefined;
+    const artist = blend === "lead" ? undefined : intent.artist;
+    const mix = blend === "lead" ? intent.artist : blend === "mix" ? undefined : (intent.mixArtist ?? artist);
     const style =
         intent.style ??
         artist?.style ??
@@ -843,7 +916,11 @@ export function composeIntent(intent, seed, suggestion = {}) {
     let summary = `${label} at ${bpm} bpm in ${root} ${mode}, ${move === "melodic" ? "melodic" : "rooted"} bass, ${
         { low: "dry", mid: "some", high: "wide" }[echo]
     } echo`;
-    if (artist && intent.mixArtist) {
+    if (blend === "lead" && mix) {
+        summary += `, drums and tempo from the AI's reading, echo and bass from ${mix.name} (${mix.traits})`;
+    } else if (blend === "mix" && artist) {
+        summary += `, drums and tempo from ${artist.name} (${artist.traits}), echo and bass from the AI's reading`;
+    } else if (artist && intent.mixArtist) {
         const other = intent.mixArtist;
         summary += `, ${artist.name} meets ${other.name}: drums and tempo from ${artist.name} (${artist.traits}), echo and bass from ${other.name} (${other.traits})`;
     } else if (artist) {
@@ -872,12 +949,14 @@ export function compose(request, take = 0, reading = null) {
     const { text, summary } = composeIntent(intent, hash(normalize(request)) + take * 7919, reading ?? {});
     const { errors } = parse(text);
     if (errors.length) throw new Error(`composer wrote an invalid riddim: ${JSON.stringify(errors)}`);
-    let note = "";
+    let note = intent.guessed.length
+        ? ` (${intent.guessed.map(({ typed, name }) => `read "${typed}" as ${name}`).join(", ")})`
+        : "";
     const phrases = intent.unknown.map((phrase) => `"${phrase}"`).join(", ");
     if (reading?.reading) {
-        note = ` (the AI read ${phrases || "it"} as: ${reading.reading})`;
+        note += ` (the AI read ${phrases || "it"} as: ${reading.reading})`;
     } else if (intent.unknown.length) {
-        note = STEERING.some((field) => intent[field] !== undefined)
+        note += STEERING.some((field) => intent[field] !== undefined)
             ? ` (I don't know ${phrases}, so I went by the other words)`
             : ` (I don't know ${phrases} yet, so your words picked this take; add a style, mood or tempo to steer it)`;
     }

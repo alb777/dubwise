@@ -231,8 +231,28 @@ describe("references and images", () => {
     });
 
     it("does not read everyday words as names", () => {
-        for (const idea of ["a riddim with culture and soul", "uma mala cheia de dub", "the bug in my code"]) {
-            assert.equal(readIntent(idea).artist, undefined, idea);
+        const ideas = [
+            "a riddim with culture and soul",
+            "uma mala cheia de dub",
+            "the bug in my code",
+            "a foundation riddim",
+            "a riddim with covers",
+            "barley in the field",
+        ];
+        for (const idea of ideas) assert.equal(readIntent(idea).artist, undefined, idea);
+    });
+
+    it("reads a name typed with a slip and says so", () => {
+        const cases = [
+            ["lemi irie e drake", "Liemy irie", "lemi irie"],
+            ["king tuby", "King Tubby", "king tuby"],
+            ["roots like steel pulce", "Steel Pulse", "steel pulce"],
+        ];
+        for (const [idea, name, typed] of cases) {
+            const intent = readIntent(idea);
+            assert.equal(intent.artist?.name, name, idea);
+            assert.deepEqual(intent.guessed, [{ typed, name }], idea);
+            assert.match(compose(idea).summary, new RegExp(`read "${typed}" as ${name}`), idea);
         }
     });
 
