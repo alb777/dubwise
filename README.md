@@ -99,6 +99,7 @@ npm run check           # TypeScript strict checking of the JSDoc types, and Bio
 npm run check:browser   # audio and UI checks in a headless Chromium browser (BROWSER=chromium to pick one)
 npm run check:ai        # the in-browser AI on your GPU over odd ideas; downloads the model (1.1 GB) once
 npm run build:lexicon   # rebuild the word map from potion-multilingual-128M (512 MB download, once), then npm run sw:version
+npm run build:references # rebuild the artist and riddim catalogue from its source, kept outside this repository
 python3 -m http.server  # then open http://localhost:8000
 ```
 

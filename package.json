@@ -10,7 +10,8 @@
         "check:offline": "node tests/browser/offline.mjs",
         "sw:version": "node tools/sw-version.mjs",
         "check:ai": "node tests/browser/ai-model.mjs",
-        "build:lexicon": "node tools/build-lexicon.mjs"
+        "build:lexicon": "node tools/build-lexicon.mjs",
+        "build:references": "node tools/build-references.mjs"
     },
     "devDependencies": {
         "@biomejs/biome": "2.5.14",
