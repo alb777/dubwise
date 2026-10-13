@@ -11,7 +11,7 @@ A dub sound system in your browser. Describe a riddim in your own words and it p
 ## What you can do
 
 1. **Play a riddim.** One drop, rockers or steppers to start, at dub tempo.
-2. **Mix it like dub.** Mute channels in and out, hold **throw** to send a channel into the tape echo, sweep the DJ filter, ride the spring.
+2. **Mix it like dub.** Mute channels in and out, hold **throw** to send a channel into the tape echo, sweep the DJ filter, ride the spring. The effect pads play the rest of a dub desk: kick the spring tank (**crash**), hold **spin** to send the echo into a howl, blow the air **horn**, switch on a **phaser** like the Mu-Tron Bi-Phase or a **low** or **high kill**, slow the riddim to a halt with **tape stop**, or **pull up**: rewind it and play it again from the top.
 3. **Play the siren.** Hold the pad, slide sideways for pitch, up and down for speed.
 4. **Edit the pattern.** Click steps in the grid; shift-click clears one.
 5. **Live-code it.** Type `bpm 76` or `kick x...x...x...x...` in the console and the riddim changes on the next step.
@@ -30,6 +30,10 @@ mute <ch>, unmute <ch>    channels: kick rim hat bass skank siren
 solo <ch>, unsolo         hear one channel alone, or all again
 throw <ch>                send a channel into the echo for one beat
 filter <-1 to 1>          DJ filter: -1 dark, 0 open, 1 thin
+crash, horn               kick the spring tank, blow the air horn
+spin                      spin the echo into a howl for two beats (hold the pad for longer)
+phaser, kill low|high     switch the phaser or a kill on and off
+tape stop, pull up        slow the riddim to a halt, or rewind it and play it again from the top
 preset <name>             one-drop, rockers, steppers
 again, undo               another version of the last idea, or back one change
 show, share, help, notation, clear

@@ -688,6 +688,34 @@ input[type="range"] {
     display: block;
 }
 
+/* dub effect pads: one-shots, the held spin, switches, and the deck moves */
+.pads {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+}
+
+.pads button {
+    padding: 8px 4px;
+    border-color: var(--accent);
+    touch-action: none;
+    user-select: none;
+}
+
+.pads [aria-pressed] {
+    border-color: var(--cool);
+}
+
+.pads [aria-pressed="true"] {
+    background: var(--cool);
+    color: var(--on-cool);
+}
+
+.pads [data-fx="tape-stop"],
+.pads [data-fx="pull-up"] {
+    border-color: var(--hot);
+}
+
 /* console */
 .console {
     display: grid;

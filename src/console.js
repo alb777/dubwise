@@ -7,6 +7,17 @@ import { DRUMS, SPEC } from "../skills/dubwise/scripts/notation.mjs";
 
 export const CHANNELS = /** @type {const} */ (["kick", "rim", "hat", "bass", "skank", "siren"]);
 export const PRESETS = /** @type {const} */ (["one-drop", "rockers", "steppers"]);
+/** Effects a selector plays live: tapped, held (spin) or switched on and off (phaser, kills). */
+export const EFFECTS = /** @type {const} */ ([
+    "crash",
+    "spin",
+    "horn",
+    "phaser",
+    "kill-low",
+    "kill-high",
+    "tape-stop",
+    "pull-up",
+]);
 /** Colour themes and their names. Each one is a [data-theme] block in styles.css; dub is the default. */
 export const THEMES = /** @type {const} */ ({
     dub: "dub",
@@ -40,6 +51,12 @@ const COMMAND_WORDS = [
     "theme",
     "guide",
     "manual",
+    "crash",
+    "spin",
+    "horn",
+    "phaser",
+    "kill",
+    "rewind",
 ];
 
 /** The command a word is one slip away from (two for long words), if any. @param {string} word */
@@ -61,6 +78,10 @@ export const COMMANDS = `commands
   solo <ch>, unsolo         hear one channel alone, or all again
   throw <ch>                send a channel into the echo for one beat
   filter <-1 to 1>          DJ filter: -1 dark, 0 open, 1 thin
+  crash, horn               kick the spring tank, blow the air horn
+  spin                      spin the echo into a howl for two beats (hold the pad for longer)
+  phaser, kill low|high     switch the phaser or a kill on and off
+  tape stop, pull up        slow the riddim to a halt, or rewind it and play it again from the top
   preset <name>             ${PRESETS.join(", ")}
   again                     another version of the last idea
   undo                      take back the last change
@@ -82,11 +103,13 @@ or paste a whole riddim that starts with "dubwise 1".`;
 
 /**
  * @typedef {typeof CHANNELS[number]} Channel
+ * @typedef {typeof EFFECTS[number]} Effect
  * @typedef {{ type: "play" | "stop" | "show" | "share" | "help" | "notation" | "clear" | "unsolo" | "again" | "undo"
  *     | "guide" | "ai" | "ai-off" }
  *   | { type: "mute", channel: Channel, on: boolean }
  *   | { type: "solo" | "throw", channel: Channel }
  *   | { type: "filter", value: number }
+ *   | { type: "fx", effect: Effect, on?: boolean }
  *   | { type: "preset", name: typeof PRESETS[number] }
  *   | { type: "theme", name: keyof typeof THEMES }
  *   | { type: "compose" | "prompt", request: string, ai?: boolean }
@@ -168,6 +191,33 @@ export function parseCommand(input) {
             if (!name) return error(`themes: ${Object.keys(THEMES).join(", ")}`);
             return { type: "theme", name };
         }
+        // Effects take no words after them, except where noted, so "crash bandicoot" is still an idea.
+        case "crash":
+        case "spin":
+        case "horn":
+            if (!arg) return { type: "fx", effect: word };
+            break;
+        case "phaser":
+            if (!arg) return { type: "fx", effect: "phaser" };
+            if (arg === "on" || arg === "off") return { type: "fx", effect: "phaser", on: arg === "on" };
+            return error("phaser, or phaser on, or phaser off");
+        case "kill": {
+            const [band, state] = rest.map((item) => item.toLowerCase());
+            if ((band === "low" || band === "high") && (state === undefined || state === "on" || state === "off"))
+                return { type: "fx", effect: `kill-${band}`, ...(state && { on: state === "on" }) };
+            return error("kill low or kill high, then on or off if you like");
+        }
+        case "tape":
+            if (arg.toLowerCase() === "stop") return { type: "fx", effect: "tape-stop" };
+            break;
+        case "pull":
+            if (arg.toLowerCase() === "up") return { type: "fx", effect: "pull-up" };
+            break;
+        case "pull-up":
+        case "pullup":
+        case "rewind":
+            if (!arg) return { type: "fx", effect: "pull-up" };
+            break;
         case "prompt":
             if (!arg)
                 return error("say what you want, for example: prompt a dark steppers in D minor with lots of echo");

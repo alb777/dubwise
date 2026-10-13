@@ -185,6 +185,124 @@ describe("audio", () => {
         assert.ok(held - after > 30, `siren release ${held.toFixed(1)} vs ${after.toFixed(1)} dBFS`);
     });
 
+    it("kicks the spring tank with a crash, whatever the spring level", async () => {
+        const silent = riddimOf("dubwise 1\necho 1/4 0\n");
+        const crash = (on) =>
+            render(silent, {
+                seconds: 2,
+                configure: (engine) => {
+                    engine.setSpring(0, 0);
+                    if (on) engine.springCrash(0.2);
+                },
+            });
+        const crashed = measure(await crash(true), 0.3, 1.2);
+        assert.ok(crashed.db > -40, `crash ${crashed.db.toFixed(1)} dBFS`);
+        assert.ok(crashed.peak <= 1 && !crashed.nan);
+        assert.ok(measure(await crash(false), 0.3, 1.2).peak < 1e-4);
+    });
+
+    it("spins the echo into a howl while held and lets it go", async () => {
+        const spin = (held) =>
+            render(singleRim, {
+                seconds: 6,
+                playSteps: 1,
+                configure: (engine) => {
+                    engine.setSpring(0, 0);
+                    engine.setThrow("rim", true, 0);
+                    if (held) {
+                        engine.setSpin(true, 0.3);
+                        engine.setSpin(false, 3);
+                    }
+                },
+            });
+        const spun = await spin(true);
+        const plain = await spin(false);
+        const howl = measure(spun, 2.2, 3).db - measure(plain, 2.2, 3).db;
+        assert.ok(howl > 10, `spin ${howl.toFixed(1)} dB over the plain echo`);
+        assert.ok(measure(spun).peak <= 1 && !measure(spun).nan);
+        const release = measure(spun, 2.2, 3).db - measure(spun, 5.3, 6).db;
+        assert.ok(release > 10, `the howl falls ${release.toFixed(1)} dB after letting go`);
+    });
+
+    it("kills the lows and the highs of the whole mix", async () => {
+        const solo = (track, band, on) =>
+            render(preset("steppers"), {
+                seconds: 2,
+                configure: (engine) => {
+                    soloing(track)(engine);
+                    engine.setKill(band, on, 0);
+                },
+            });
+        const bass =
+            measure(await solo("bass", "low", false), 0.1).db - measure(await solo("bass", "low", true), 0.1).db;
+        assert.ok(bass > 20, `low kill ${bass.toFixed(1)} dB on the bass`);
+        const hats =
+            measure(await solo("hat", "high", false), 0.1).db - measure(await solo("hat", "high", true), 0.1).db;
+        assert.ok(hats > 20, `high kill ${hats.toFixed(1)} dB on the hats`);
+    });
+
+    it("sweeps the mix through the phaser without a jump in level", async () => {
+        const skank = (on) =>
+            render(preset("steppers"), {
+                seconds: 3,
+                configure: (engine) => {
+                    soloing("skank")(engine);
+                    engine.setPhaser(on, 0);
+                },
+            });
+        const [dry, phased] = [await skank(false), await skank(true)];
+        const change = Math.abs(measure(phased, 0.1).db - measure(dry, 0.1).db);
+        assert.ok(change < 4, `phaser changes the level by ${change.toFixed(1)} dB`);
+        const a = dry.getChannelData(0);
+        const b = phased.getChannelData(0);
+        let difference = 0;
+        let energy = 0;
+        for (let i = 0; i < a.length; i++) {
+            difference += (a[i] - b[i]) ** 2;
+            energy += a[i] ** 2;
+        }
+        assert.ok(difference / energy > 0.1, `the phaser changed ${((100 * difference) / energy).toFixed(0)}% of it`);
+    });
+
+    it("stops the deck to silence or pulls it up backwards, then plays live again", async () => {
+        // The held siren gives the deck a steady sound to slow down and spin back.
+        const silent = riddimOf("dubwise 1\necho 1/4 0\n");
+        for (const move of /** @type {const} */ (["stop", "pull-up"])) {
+            let end = 0;
+            let busy;
+            const buffer = await render(silent, {
+                seconds: 4,
+                configure: (engine) => {
+                    engine.siren.start(0.1);
+                    end = engine.deckMove(move, 1) ?? 0;
+                    busy = engine.deckMove(move, 1.1);
+                    engine.deckReset(3);
+                },
+            });
+            assert.equal(busy, null, `${move}: a second move waits for the first`);
+            assert.ok(measure(buffer, 1.05, end - 0.3).db > -30, `${move} still sounds while it runs`);
+            assert.ok(measure(buffer, end + 0.02, 2.95).peak < 1e-3, `${move} is silent after ${end.toFixed(2)} s`);
+            assert.ok(measure(buffer, 3.1, 4).db > -30, `${move}: live again after the reset`);
+            assert.ok(measure(buffer).peak <= 1 && !measure(buffer).nan);
+        }
+    });
+
+    it("blows the air horn through the siren's channel", async () => {
+        const silent = riddimOf("dubwise 1\necho 1/4 0\n");
+        const horn = (muted) =>
+            render(silent, {
+                seconds: 1.5,
+                configure: (engine) => {
+                    engine.setSpring(0, 0);
+                    engine.setMute("siren", muted, 0);
+                    engine.horn(0.2);
+                },
+            });
+        const blown = measure(await horn(false), 0.2, 1.2);
+        assert.ok(blown.db > -30 && blown.peak <= 1, `horn ${blown.db.toFixed(1)} dBFS`);
+        assert.ok(measure(await horn(true), 0.2, 1.2).peak < 1e-3);
+    });
+
     for (const idea of [
         "crie um riddim inspirado em augustus pablo",
         "Iration Steppas meets King Tubby",

@@ -89,6 +89,33 @@ describe("parseCommand", () => {
             assert.match(command.message, message);
         });
     }
+
+    it("reads the dub effects, and leaves ideas that start with their words to the composer", () => {
+        for (const [input, effect, on] of [
+            ["crash", "crash"],
+            ["horn", "horn"],
+            ["spin", "spin"],
+            ["phaser", "phaser"],
+            ["phaser off", "phaser", false],
+            ["kill low", "kill-low"],
+            ["kill high on", "kill-high", true],
+            ["tape stop", "tape-stop"],
+            ["pull up", "pull-up"],
+            ["Pull Up", "pull-up"],
+            ["rewind", "pull-up"],
+        ]) {
+            assert.deepEqual(parseCommand(input), { type: "fx", effect, ...(on !== undefined && { on }) }, input);
+        }
+        for (const idea of [
+            "crash bandicoot meets king tubby",
+            "tape echo heaven",
+            "spin me round",
+            "horns of jericho",
+        ]) {
+            assert.equal(parseCommand(idea)?.type, "compose", idea);
+        }
+        assert.match(/** @type {{ message: string }} */ (parseCommand("kill middle")).message, /kill low or kill high/);
+    });
 });
 
 describe("help and AI prompt", () => {
@@ -106,6 +133,13 @@ describe("help and AI prompt", () => {
             "share",
             "prompt",
             "clear",
+            "crash",
+            "horn",
+            "spin",
+            "phaser",
+            "kill",
+            "tape stop",
+            "pull up",
         ]) {
             assert.match(COMMANDS, new RegExp(`\\b${word}\\b`));
         }

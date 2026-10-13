@@ -33,14 +33,22 @@ export const GUIDE = [
         try: ["filter -0.7", "filter 0"],
     },
     {
+        title: "Play the effects",
+        text: "The pads below the siren are the rest of a dub desk. crash kicks the spring tank. Hold spin and the echo runs away into a howl. horn is the air horn. phaser sweeps the whole mix like Lee Perry's Mu-Tron, and the kills cut the lows or the highs. tape stop slows the riddim to a halt; pull up rewinds it and plays it again from the top, the selector's move.",
+        show: "#pads",
+        try: ["crash", "spin", "horn", "phaser", "phaser off", "pull up"],
+    },
+    {
         title: "Describe a riddim",
-        text: "Type an idea in English, Portuguese or Spanish and the composer writes it, offline: a style, a tempo, a key, a mood, an image or an artist. Two names, as in `X meets Y`, share the work. `again` plays another version and `undo` goes back.",
+        text: "Type an idea in English, Portuguese or Spanish and the composer writes it, offline: a style, a tempo, a key, a mood, an image or an artist. Two names, as in `X meets Y`, share the work. `again` plays another version, words like `darker`, `a bit faster` or `more echo` change the riddim playing, and `undo` goes back.",
         show: "#command",
         try: [
             "inspired by King Tubby",
             "Iration Steppas meets King Tubby",
             "a slow one drop for a rainy night",
             "again",
+            "darker",
+            "a bit faster",
             "undo",
         ],
     },

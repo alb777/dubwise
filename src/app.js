@@ -45,6 +45,7 @@ import { applyRiddim, createSequencer } from "./sequencer.js";
 /** @typedef {import("../skills/dubwise/scripts/notation.mjs").ParseError} ParseError */
 /** @typedef {import("./engine.js").Engine} Engine */
 /** @typedef {import("./console.js").Channel} Channel */
+/** @typedef {import("./console.js").Effect} Effect */
 /** @typedef {import("./ai.js").Settings} AISettings */
 /** @typedef {import("../skills/dubwise/scripts/intent.mjs").Reading} Reading */
 
@@ -74,6 +75,7 @@ const ui = {
     filter: /** @type {HTMLInputElement} */ (byId("filter")),
     volume: /** @type {HTMLInputElement} */ (byId("volume")),
     siren: byId("siren"),
+    pads: byId("pads"),
     log: byId("log"),
     prompt: /** @type {HTMLFormElement} */ (byId("prompt")),
     command: /** @type {HTMLTextAreaElement} */ (byId("command")),
@@ -115,6 +117,8 @@ const state = {
     /** Whether the player was told about the AI reader yet, which happens once a visit. */
     toldAboutAI: false,
     ai: loadSettings(),
+    /** The effects switched on: the phaser and the kills. @type {Set<Effect>} */
+    switched: new Set(),
 };
 
 /** @type {Engine | null} */
@@ -153,6 +157,8 @@ function togglePlay() {
         state.step = -1;
         renderPlayhead();
     } else {
+        // Live sound again after a tape stop or a pull-up.
+        engine?.deckReset();
         sequencer?.start();
     }
     const playing = Boolean(sequencer?.playing);
@@ -554,6 +560,71 @@ function setSolo(channel) {
     applyMix();
 }
 
+// ----- dub effects
+
+function buildPads() {
+    for (const pad of ui.pads.querySelectorAll("button[data-fx]")) {
+        const effect = /** @type {Effect} */ (/** @type {HTMLElement} */ (pad).dataset.fx);
+        if (effect === "spin") holdable(/** @type {HTMLElement} */ (pad), (on) => playEffect("spin", on));
+        else pad.addEventListener("click", () => playEffect(effect));
+    }
+}
+
+/**
+ * Play a dub effect. The spin follows `on` while held; the phaser and the kills flip, unless `on` says which way.
+ * @param {Effect} effect @param {boolean} [on]
+ */
+function playEffect(effect, on) {
+    const live = audio();
+    switch (effect) {
+        case "crash":
+            return live.springCrash();
+        case "horn":
+            return live.horn();
+        case "spin":
+            return live.setSpin(Boolean(on));
+        case "phaser":
+        case "kill-low":
+        case "kill-high": {
+            const next = on ?? !state.switched.has(effect);
+            if (next) state.switched.add(effect);
+            else state.switched.delete(effect);
+            if (effect === "phaser") live.setPhaser(next);
+            else live.setKill(effect === "kill-low" ? "low" : "high", next);
+            for (const pad of ui.pads.querySelectorAll("button[aria-pressed]")) {
+                const name = /** @type {Effect} */ (/** @type {HTMLElement} */ (pad).dataset.fx);
+                pad.setAttribute("aria-pressed", String(state.switched.has(name)));
+            }
+            return;
+        }
+        case "tape-stop":
+        case "pull-up":
+            return deckMove(effect);
+    }
+}
+
+/**
+ * A tape stop halts the riddim; a pull-up rewinds it, lets it breathe a beat and plays it again from the top.
+ * @param {"tape-stop" | "pull-up"} effect
+ */
+function deckMove(effect) {
+    if (!sequencer?.playing) return print(`play the riddim first, then ${effect.replace("-", " ")}`, "err");
+    const live = audio();
+    const end = live.deckMove(effect === "tape-stop" ? "stop" : "pull-up");
+    if (end === null) return;
+    setTimeout(
+        () => {
+            if (sequencer?.playing) togglePlay();
+            if (effect === "pull-up") {
+                setTimeout(() => {
+                    if (!sequencer?.playing) togglePlay();
+                }, 60000 / state.riddim.bpm);
+            }
+        },
+        (end - live.context.currentTime) * 1000,
+    );
+}
+
 // ----- theme and guide
 
 /** @param {string | undefined} name @returns {name is keyof typeof THEMES} */
@@ -851,6 +922,15 @@ function execute(input) {
             return setSolo(command.channel);
         case "unsolo":
             return setSolo(null);
+        case "fx": {
+            if (command.effect !== "spin") return playEffect(command.effect, command.on);
+            // Typed, the spin holds for two beats.
+            const live = audio();
+            const now = live.context.currentTime;
+            live.setSpin(true, now);
+            live.setSpin(false, now + 120 / state.riddim.bpm);
+            return;
+        }
         case "throw": {
             const live = audio();
             const now = live.context.currentTime;
@@ -944,6 +1024,7 @@ function execute(input) {
 // ----- wiring
 
 buildStrips();
+buildPads();
 buildGuide();
 buildThemeMenu();
 const savedTheme = document.documentElement.dataset.theme;

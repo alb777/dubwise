@@ -342,6 +342,35 @@ await withPage("/", async (page) => {
     await wait(300);
     check("undo takes the change back", Number(await evaluate("document.getElementById('bpm').value")) === bpmBefore);
 
+    // The dub effect pads: the switches flip, the one-shots play, and the deck moves stop or restart the riddim.
+    const playing = () => evaluate("document.getElementById('play').getAttribute('aria-pressed') === 'true'");
+    const pad = (name) => `document.querySelector('[data-fx="${name}"]')`;
+    await evaluate(`${pad("phaser")}.click()`);
+    check("the phaser pad switches on", (await evaluate(`${pad("phaser")}.getAttribute('aria-pressed')`)) === "true");
+    await evaluate(type("phaser"));
+    check(
+        "phaser typed switches it off",
+        (await evaluate(`${pad("phaser")}.getAttribute('aria-pressed')`)) === "false",
+    );
+    await evaluate(`${pad("crash")}.click(); ${pad("horn")}.click()`);
+    await evaluate(type("kill low"));
+    check(
+        "kill low switches the low kill on",
+        (await evaluate(`${pad("kill-low")}.getAttribute('aria-pressed')`)) === "true",
+    );
+    await evaluate(type("kill low off"));
+    if (!(await playing())) await evaluate("document.getElementById('play').click()");
+    await evaluate(`${pad("tape-stop")}.click()`);
+    await wait(2000);
+    check("tape stop halts the riddim", !(await playing()));
+    await evaluate("document.getElementById('play').click()");
+    await wait(300);
+    await evaluate(type("pull up"));
+    await wait(1200);
+    const pulled = !(await playing());
+    await wait(1500);
+    check("pull up stops the riddim and plays it again from the top", pulled && (await playing()), pulled);
+
     for (const [name, width, height, mobile] of [
         ["desktop", 1280, 1000, false],
         ["phone", 390, 844, true],

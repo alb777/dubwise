@@ -90,8 +90,14 @@ function tanhCurve(drive) {
 export function createEngine(context, { seed = 7 } = {}) {
     const random = mulberry32(seed);
 
-    // Master: mix bus, DJ filter (lowpass then highpass), a gentle limiter.
+    // Master: mix bus, kill switches, DJ filter (lowpass then highpass), phaser, a gentle limiter, then the deck.
     const mixBus = context.createGain();
+    const lowKill = context.createBiquadFilter();
+    lowKill.type = "lowshelf";
+    lowKill.frequency.value = 250;
+    const highKill = context.createBiquadFilter();
+    highKill.type = "highshelf";
+    highKill.frequency.value = 2500;
     const lowpass = context.createBiquadFilter();
     lowpass.type = "lowpass";
     lowpass.frequency.value = FILTER_LOW;
@@ -112,8 +118,34 @@ export function createEngine(context, { seed = 7 } = {}) {
     clipIn.gain.value = 1 / CLIP_INPUT_RANGE;
     const clipper = context.createWaveShaper();
     clipper.curve = safetyCurve();
-    mixBus.connect(lowpass).connect(highpass).connect(limiter).connect(master).connect(clipIn).connect(clipper);
-    clipper.connect(context.destination);
+    // Phaser, after the Mu-Tron Bi-Phase on Lee Perry's desk: six allpass stages swept by a slow LFO, mixed back in.
+    const phaserDry = context.createGain();
+    const phaserWet = context.createGain();
+    phaserWet.gain.value = 0;
+    const sweep = context.createOscillator();
+    sweep.frequency.value = 0.35;
+    const sweepDepth = context.createGain();
+    sweepDepth.gain.value = 700;
+    sweep.connect(sweepDepth);
+    sweep.start();
+    /** @type {AudioNode} */
+    let stage = highpass;
+    for (let i = 0; i < 6; i++) {
+        const allpass = context.createBiquadFilter();
+        allpass.type = "allpass";
+        allpass.frequency.value = 900;
+        sweepDepth.connect(allpass.frequency);
+        stage = stage.connect(allpass);
+    }
+    stage.connect(phaserWet).connect(limiter);
+    // The deck: a delay line the whole sound runs through, at no delay until a tape stop or a pull-up makes it lag
+    // further and further behind, which slows the sound down or plays it backwards.
+    const deck = context.createDelay(4);
+    deck.delayTime.value = 0;
+    const deckOut = context.createGain();
+    mixBus.connect(lowKill).connect(highKill).connect(lowpass).connect(highpass).connect(phaserDry).connect(limiter);
+    limiter.connect(master).connect(clipIn).connect(clipper).connect(deck).connect(deckOut);
+    deckOut.connect(context.destination);
 
     // Tape echo: delay -> tone -> low cut -> tape saturation -> feedback -> delay.
     const echoIn = context.createGain();
@@ -163,6 +195,10 @@ export function createEngine(context, { seed = 7 } = {}) {
     const springReturn = context.createGain();
     springReturn.gain.value = 0.25;
     springIn.connect(convolver).connect(springLowCut).connect(springHighCut).connect(springReturn).connect(mixBus);
+    // A crash is heard whatever the spring level, through a return of its own that opens only for the crash.
+    const crashReturn = context.createGain();
+    crashReturn.gain.value = 0;
+    springHighCut.connect(crashReturn).connect(mixBus);
 
     // One channel per track: voices -> level -> mute -> master, with echo and spring sends after the mute,
     // like aux sends on a mixing desk: a muted channel stops feeding the echo, but tails already in it ring on.
@@ -330,6 +366,36 @@ export function createEngine(context, { seed = 7 } = {}) {
     }
 
     /**
+     * One blast of an air horn: a brassy chord of saws that bends up into pitch, with some grit.
+     * @param {number} time @param {number} length
+     */
+    function blast(time, length) {
+        const grit = context.createWaveShaper();
+        grit.curve = tanhCurve(3);
+        const band = context.createBiquadFilter();
+        band.type = "bandpass";
+        band.frequency.value = 1400;
+        band.Q.value = 0.8;
+        const amp = context.createGain();
+        amp.gain.setValueAtTime(0.0001, time);
+        amp.gain.exponentialRampToValueAtTime(1.6, time + 0.01);
+        amp.gain.setValueAtTime(1.6, time + length - 0.03);
+        amp.gain.exponentialRampToValueAtTime(0.0001, time + length);
+        grit.connect(band).connect(amp).connect(channels.siren.input);
+        for (const ratio of [1, 1.26, 1.5]) {
+            const osc = context.createOscillator();
+            osc.type = "sawtooth";
+            osc.frequency.setValueAtTime(311 * ratio * 0.94, time);
+            osc.frequency.exponentialRampToValueAtTime(311 * ratio, time + 0.04);
+            const mix = context.createGain();
+            mix.gain.value = 0.3;
+            osc.connect(mix).connect(grit);
+            osc.start(time);
+            osc.stop(time + length + 0.02);
+        }
+    }
+
+    /**
      * Play one sequencer event.
      * @param {NoteEvent} event
      * @param {number} time
@@ -406,6 +472,11 @@ export function createEngine(context, { seed = 7 } = {}) {
         };
     })();
 
+    /** The echo as last set, which an echo spin returns to. */
+    const echoSettings = { seconds: 0.375, amount: 0.5 };
+    /** When the deck is free for another move. */
+    let deckFreeAt = 0;
+
     return {
         context,
         siren,
@@ -424,8 +495,81 @@ export function createEngine(context, { seed = 7 } = {}) {
          * @param {number} seconds @param {number} amount @param {number} [time]
          */
         setEcho(seconds, amount, time = context.currentTime) {
-            delay.delayTime.setTargetAtTime(Math.min(seconds, 1.9), time, 0.08);
-            feedback.gain.setTargetAtTime(Math.min(amount, 0.95), time, 0.02);
+            Object.assign(echoSettings, { seconds: Math.min(seconds, 1.9), amount: Math.min(amount, 0.95) });
+            delay.delayTime.setTargetAtTime(echoSettings.seconds, time, 0.08);
+            feedback.gain.setTargetAtTime(echoSettings.amount, time, 0.02);
+        },
+        /**
+         * Spin the echo while `on`: feedback past the edge, so the tape runs away and howls, and a delay sliding
+         * shorter, so the pitch rises. Letting go brings the echo back as it was set.
+         * @param {boolean} on @param {number} [time]
+         */
+        setSpin(on, time = context.currentTime) {
+            feedback.gain.setTargetAtTime(on ? 1.1 : echoSettings.amount, time, on ? 0.1 : 0.05);
+            delay.delayTime.setTargetAtTime(echoSettings.seconds * (on ? 0.6 : 1), time, on ? 0.8 : 0.3);
+        },
+        /** Kick the spring tank: a crash of noise and a thump straight into the springs. @param {number} [time] */
+        springCrash(time = context.currentTime) {
+            const hit = envelope(time, 1.2, 0.09);
+            noiseSource(time, 0.1).connect(hit).connect(springIn);
+            const thump = context.createOscillator();
+            thump.frequency.setValueAtTime(90, time);
+            thump.frequency.exponentialRampToValueAtTime(40, time + 0.12);
+            thump.connect(envelope(time, 1, 0.15)).connect(springIn);
+            thump.start(time);
+            thump.stop(time + 0.2);
+            // The anchor keeps node-web-audio-api from evaluating the fall before the crash.
+            crashReturn.gain.setValueAtTime(0.8, time);
+            crashReturn.gain.setTargetAtTime(0, time + 0.3, 0.7);
+        },
+        /** The air horn: two short blasts and a long one, through the siren's channel. @param {number} [time] */
+        horn(time = context.currentTime) {
+            for (const [start, length] of [
+                [0, 0.12],
+                [0.17, 0.12],
+                [0.34, 0.6],
+            ]) {
+                blast(time + start, length);
+            }
+        },
+        /** Cut the lows or the highs of the whole mix while `on`. @param {"low" | "high"} band @param {boolean} on @param {number} [time] */
+        setKill(band, on, time = context.currentTime) {
+            (band === "low" ? lowKill : highKill).gain.setTargetAtTime(on ? -40 : 0, time, 0.01);
+        },
+        /** Sweep the whole mix through the phaser while `on`. @param {boolean} on @param {number} [time] */
+        setPhaser(on, time = context.currentTime) {
+            phaserWet.gain.setTargetAtTime(on ? 0.7 : 0, time, 0.05);
+            phaserDry.gain.setTargetAtTime(on ? 0.7 : 1, time, 0.05);
+        },
+        /**
+         * Work the deck: "stop" slows the whole sound down to a halt, like a hand on the platter, and "pull-up" spins
+         * it backwards, the selector's rewind. The sound is cut at the end until deckReset(). Returns the time the
+         * move ends, or null while the last move is still running.
+         * @param {"stop" | "pull-up"} move @param {number} [time]
+         * @returns {number | null}
+         */
+        deckMove(move, time = context.currentTime) {
+            if (time < deckFreeAt) return null;
+            const seconds = move === "stop" ? 1.4 : 0.9;
+            // The delay grows at `slope` times the time passed by the end: 1 brings the deck to a halt, 3 runs it
+            // backwards at twice its speed.
+            const slope = move === "stop" ? 1 : 3;
+            const curve = Float32Array.from({ length: 64 }, (_, i) => {
+                const t = (i / 63) * seconds;
+                return (slope * t * t) / (2 * seconds);
+            });
+            deck.delayTime.setValueCurveAtTime(curve, time, seconds);
+            deckOut.gain.setValueAtTime(1, time + seconds * 0.8);
+            deckOut.gain.linearRampToValueAtTime(0, time + seconds);
+            deckFreeAt = time + seconds;
+            return deckFreeAt;
+        },
+        /** Back to the live sound after a deck move. @param {number} [time] */
+        deckReset(time = context.currentTime) {
+            const at = Math.max(time, deckFreeAt);
+            deck.delayTime.setValueAtTime(0, at);
+            deckOut.gain.setValueAtTime(0, at);
+            deckOut.gain.linearRampToValueAtTime(1, at + 0.01);
         },
         /** Spring reverb return level 0..1. @param {number} level @param {number} [time] */
         setSpring(level, time = context.currentTime) {
