@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
 
 import { READING_SCHEMA } from "../skills/dubwise/scripts/intent.mjs";
-import { readWithEndpoint, WEBLLM_URL } from "../src/ai.js";
+import { asError, readWithEndpoint, WEBLLM_URL } from "../src/ai.js";
 
 const ANSWER = {
     reading: "spy film: tense, dark",
@@ -87,6 +87,16 @@ describe("reading an idea with an OpenAI-compatible server", () => {
         reset();
         queue.push(answer("I'd suggest something chill!"));
         await assert.rejects(readWithEndpoint({ url, model: "m" }, "idea"), /did not fit the form/);
+    });
+});
+
+describe("failures", () => {
+    it("say what happened, even when the model's worker sends plain text", () => {
+        assert.equal(asError("Error: GPU device was lost").message, "GPU device was lost");
+        assert.equal(asError(new Error("timeout")).message, "timeout");
+        for (const silent of [undefined, null, "", {}, new Error("")]) {
+            assert.equal(asError(silent).message, "the model failed without saying why", String(silent));
+        }
     });
 });
 

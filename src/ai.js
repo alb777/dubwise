@@ -247,6 +247,15 @@ async function readWithBrowser(size, idea, onProgress) {
 
 // ----- one way in
 
+/** Errors from the model's worker arrive as plain text; make every failure an Error that says what happened. @param {unknown} error */
+export function asError(error) {
+    if (error instanceof Error && error.message) return error;
+    const text = String(error ?? "")
+        .replace(/^Error\b:?\s*/, "")
+        .trim();
+    return new Error(text && text !== "[object Object]" ? text : "the model failed without saying why");
+}
+
 /** Readings already made, so "again" and repeated ideas ask once. @type {Map<string, Reading>} */
 const readings = new Map();
 
@@ -261,21 +270,27 @@ export async function readIdea(settings, idea, { signal, onProgress } = {}) {
     const known = readings.get(memo);
     if (known) return known;
     let reading;
+    try {
+        reading = await readWith(settings, idea, signal, onProgress);
+    } catch (error) {
+        throw asError(error);
+    }
+    readings.set(memo, reading);
+    return reading;
+}
+
+/** @param {Settings} settings @param {string} idea @param {AbortSignal} [signal] @param {Progress} [onProgress] */
+function readWith(settings, idea, signal, onProgress) {
     if (settings.provider === "endpoint") {
         if (!settings.model) throw new Error("name the model to use");
         const timeout = AbortSignal.timeout(60_000);
-        reading = await readWithEndpoint(
+        return readWithEndpoint(
             { url: settings.url, model: settings.model, key: loadKey() },
             idea,
             signal ? AbortSignal.any([signal, timeout]) : timeout,
         );
-    } else if (settings.provider === "browser") {
-        reading = await readWithBrowser(settings.size, idea, onProgress);
-    } else if (settings.provider === "chrome") {
-        reading = await readWithChrome(idea, signal, onProgress);
-    } else {
-        throw new Error("the AI is off");
     }
-    readings.set(memo, reading);
-    return reading;
+    if (settings.provider === "browser") return readWithBrowser(settings.size, idea, onProgress);
+    if (settings.provider === "chrome") return readWithChrome(idea, signal, onProgress);
+    throw new Error("the AI is off");
 }
