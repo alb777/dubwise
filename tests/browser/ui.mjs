@@ -382,8 +382,12 @@ await withPage("/", async (page) => {
     check("play it composes the mood", / bpm in /.test(moodPlayed), moodPlayed);
     await evaluate(type("who is King Tubby?"));
     await wait(300);
-    const story = (await evaluate(lines("sel"))).at(-2) ?? "";
-    check("the selector tells the story behind a name", story.startsWith("King Tubby:"), story);
+    const told = await evaluate(lines("sel"));
+    check(
+        "the selector tells the story behind a name",
+        told.some((line) => line.startsWith("King Tubby: Osbourne Ruddock")),
+        told.slice(-3),
+    );
 
     for (const [name, width, height, mobile] of [
         ["desktop", 1280, 1000, false],

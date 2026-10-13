@@ -187,7 +187,7 @@ export function createSelector(content, today = new Date()) {
         offer = { kind: "story", idea: `inspired by ${artist.aliases[0]}` };
         const story = content.stories.find((entry) => entry.name === artist.name);
         const say = story
-            ? [`${story.name}: ${story.story}`, `Listen for ${story.listen}`]
+            ? [`${story.name}: ${story.story}`, `Listen for: ${story.listen}`]
             : [`${artist.name}: ${artist.traits}.`];
         say.push('Say "play it" for a riddim in that spirit, or "another" for another story.');
         return { say };

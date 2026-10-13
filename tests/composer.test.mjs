@@ -273,6 +273,19 @@ describe("references and images", () => {
         }
     });
 
+    it("reads the bass words people type, with nothing left over", () => {
+        for (const [idea, bass] of [
+            ["steppers with melodic bass", "melodic"],
+            ["a heavy one drop with root bass", "root"],
+            ["rooted steppers", "root"],
+            ["um steppers com baixo pesado", "root"],
+        ]) {
+            const intent = readIntent(idea);
+            assert.equal(intent.bass, bass, idea);
+            assert.deepEqual(intent.unknown, [], idea);
+        }
+    });
+
     it("lets plain words beat images, and earlier images beat later ones", () => {
         assert.equal(readIntent("a happy riddim for a rainy day").mode, "major");
         assert.equal(readIntent("a dry riddim in the rain").echo, "low");
