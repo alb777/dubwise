@@ -42,6 +42,10 @@ describe("parseCommand", () => {
             "crie um riddim inspirado em augustus pablo",
             { type: "compose", request: "crie um riddim inspirado em augustus pablo" },
         ],
+        ["Koffee", { type: "compose", request: "Koffee" }],
+        ["slow", { type: "compose", request: "slow" }],
+        ["sol maior", { type: "compose", request: "sol maior" }],
+        ["hello there", { type: "compose", request: "hello there" }],
         ["again", { type: "again" }],
         ["undo", { type: "undo" }],
         ["bpm 76", { type: "line", line: "bpm 76" }],
@@ -61,6 +65,10 @@ describe("parseCommand", () => {
         ["preset jungle", /presets:/],
         ["ai", /describe the riddim/],
         ["prompt", /say what you want/],
+        ["pla", /did you mean "play"\?/],
+        ["stpo", /did you mean "stop"\?/],
+        ["mte bass", /did you mean "mute bass"\?/],
+        ["notaion", /did you mean "notation"\?/],
     ];
     for (const [input, message] of errors) {
         it(`rejects ${JSON.stringify(input)}`, () => {

@@ -61,7 +61,7 @@ Drums take 16 steps per bar (`.` rest, `x` hit, `X` accent, `o` open hat). The b
 
 The composer runs in the page, with no model and no network. It reads the idea for a style (one drop, rockers, steppers), a tempo (`80 bpm`, `slow`), a key (`in D minor`, `Gm`), a mood (dark, happy, lots of echo, minimal, melodic bass) and artist or scene references, then writes drums, chords and a bass line that follow the rules of the style. Two names, as in `X meets Y`, split the work: the first sets drums and tempo, the second echo, bass and mood. The same idea always gives the same riddim, and `again` walks through other versions.
 
-Artist references map to broad style traits only: King Tubby means heavy echo and channels dropping out, Jah Shaka means militant steppers. dubwise holds no songs, so it never copies a real bassline or melody, and a name it does not know is said out loud instead of guessed at. The `prompt` command asks the same of any chat AI you hand the idea to.
+Artist references map to broad style traits only: King Tubby means heavy echo and channels dropping out, Jah Shaka means militant steppers. dubwise holds no songs, so it never copies a real bassline or melody, and a name it does not know is said out loud instead of guessed at. No idea is turned down: words it does not know still pick a take, and the reply names them so you can steer with a style, mood or tempo. The `prompt` command asks the same of any chat AI you hand the idea to.
 
 ## Offline
 

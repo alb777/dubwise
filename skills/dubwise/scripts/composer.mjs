@@ -17,10 +17,11 @@ import { bassMidi, parse, STEPS_PER_BAR } from "./notation.mjs";
  * @typedef {{ name: string, aliases: string[], style: Style, bpm: number, mode: Mode, echo: Amount,
  *   density: Density, bass: BassMove, traits: string }} Artist
  * @typedef {{ style?: Style, bpm?: number, tempo?: "slow" | "fast", root?: string, mode?: Mode, echo?: Amount,
- *   density?: Density, bass?: BassMove, artist?: Artist, mixArtist?: Artist, unknownReference?: string,
- *   matched: string[] }} Intent
+ *   density?: Density, bass?: BassMove, artist?: Artist, mixArtist?: Artist, matched: string[],
+ *   unknown: string[] }} Intent
  * `artist` is the first name in the idea and sets drums and tempo; `mixArtist`, a second name as in
- * "Iration Steppas meets King Tubby", sets echo, bass and mood.
+ * "Iration Steppas meets King Tubby", sets echo, bass and mood. `unknown` holds the phrases nothing
+ * here understood, such as "martin campbell" in "Martin Campbell style".
  */
 
 /**
@@ -300,20 +301,23 @@ const WORDS = {
         "haz",
     ],
 };
-/** Phrases that ask for a reference. An unknown name after them still counts as a request. */
-const REFERENCE_MARKERS = [
-    "inspired by",
-    "inspirado em",
-    "inspirada em",
-    "inspirado no",
-    "inspirado na",
-    "inspirado por",
-    "inspirado en",
-    "in the style of",
-    "no estilo de",
-    "estilo de",
-    "al estilo de",
-];
+/** Words that only link or soften an idea, in English, Portuguese and Spanish. They are never reported as unknown. */
+const FILLER = new Set(
+    [
+        "a an the and or of with for to in on at by from as like one some something anything thing stuff please",
+        "me i my we us you your it its this that give want need would could can let lets more very really bit little",
+        "kind sort type style vibe vibes feel feeling sound sounds inspired inspiration version track song tune music",
+        "meets vs versus x",
+        "um uma uns umas o os as e ou de do da dos das com sem para pra pro por no na nos nas em num numa algo algum",
+        "alguma coisa tipo estilo inspirado inspirada inspiracao eu quero queria bem muito muita mais pouco so isso",
+        "esse essa som musica versao favor",
+        "un una el la los las y del con sin en cosa quiero hazme muy mas como",
+    ]
+        .join(" ")
+        .split(" "),
+);
+/** Intent fields that steer the riddim. Any one of them means the idea was understood in part. */
+const STEERING = /** @type {const} */ (["style", "bpm", "tempo", "root", "mode", "echo", "density", "bass", "artist"]);
 const SOLFEGE = /** @type {Record<string, string>} */ ({
     do: "C",
     re: "D",
@@ -415,7 +419,7 @@ function has(haystack, phrase) {
 export function readIntent(request) {
     const text = normalize(request);
     /** @type {Intent} */
-    const intent = { matched: [] };
+    const intent = { matched: [], unknown: [] };
     // Artist names are taken out first, so "Iration Steppas" does not also read as the steppers style.
     let words = text;
     /** @param {keyof typeof WORDS} meaning */
@@ -436,13 +440,6 @@ export function readIntent(request) {
     intent.artist = named[0]?.artist;
     intent.mixArtist = named[1]?.artist;
     for (const { alias } of named) words = words.replace(` ${alias} `, " ");
-    if (!intent.artist) {
-        const marker = REFERENCE_MARKERS.find((m) => has(text, m));
-        if (marker) {
-            const after = text.slice(text.indexOf(` ${marker} `) + marker.length + 2).trim();
-            if (after) intent.unknownReference = after.split(" ").slice(0, 4).join(" ");
-        }
-    }
     for (const style of /** @type {const} */ (["one-drop", "rockers", "steppers"])) {
         if (found(style)) {
             intent.style = style;
@@ -470,7 +467,30 @@ export function readIntent(request) {
     }
     readKey(request, text, intent);
     found("generic");
+    intent.unknown = unknownPhrases(words, intent.matched);
     return intent;
+}
+
+/**
+ * The phrases of an idea that nothing here understood. Known words split the text into pieces, and each piece
+ * loses its filler at both ends, so "for the new jamaican era" gives "new jamaican era" and "Fulano de Tal" stays whole.
+ * @param {string} words normalized idea with artist names taken out @param {string[]} matched
+ */
+function unknownPhrases(words, matched) {
+    const known = [...Object.values(WORDS).flat(), ...matched.map((m) => normalize(m).trim())]
+        .filter(Boolean)
+        .sort((a, b) => b.length - a.length);
+    let rest = words;
+    for (const phrase of known) while (has(rest, phrase)) rest = rest.replace(` ${phrase} `, " | ");
+    const filler = (/** @type {string} */ word) => FILLER.has(word) || !/[a-z]/.test(word);
+    const phrases = [];
+    for (const piece of rest.split("|")) {
+        const tokens = piece.split(" ").filter(Boolean);
+        while (tokens.length && filler(tokens[0])) tokens.shift();
+        while (tokens.length && filler(tokens[tokens.length - 1])) tokens.pop();
+        if (tokens.length) phrases.push(tokens.slice(0, 6).join(" "));
+    }
+    return phrases.slice(0, 3);
 }
 
 /**
@@ -653,20 +673,24 @@ export function composeIntent(intent, seed) {
  * @returns {{ understood: false, summary: string } | { understood: true, text: string, summary: string, intent: Intent }}
  */
 export function compose(request, take = 0) {
-    const intent = readIntent(request);
-    if (!intent.matched.length && !intent.unknownReference) {
+    // Any idea gets a riddim, however odd. Only text without a single word in it is turned down.
+    if (!/[\p{L}\p{N}]/u.test(request)) {
         return {
             understood: false,
             summary:
-                'I could not find a style, mood, key, tempo or artist in that. Try "a dark steppers in D minor" or "inspired by Augustus Pablo".',
+                'Describe a riddim in words, for example "a dark steppers in D minor" or "inspired by Augustus Pablo".',
         };
     }
+    const intent = readIntent(request);
     const { text, summary } = composeIntent(intent, hash(normalize(request)) + take * 7919);
     const { errors } = parse(text);
     if (errors.length) throw new Error(`composer wrote an invalid riddim: ${JSON.stringify(errors)}`);
-    const note =
-        intent.unknownReference && !intent.artist
-            ? ` (I don't know "${intent.unknownReference}", so I went by the other words)`
-            : "";
+    let note = "";
+    if (intent.unknown.length) {
+        const phrases = intent.unknown.map((phrase) => `"${phrase}"`).join(", ");
+        note = STEERING.some((field) => intent[field] !== undefined)
+            ? ` (I don't know ${phrases}, so I went by the other words)`
+            : ` (I don't know ${phrases} yet, so your words picked this take; add a style, mood or tempo to steer it)`;
+    }
     return { understood: true, text, summary: summary + note, intent };
 }

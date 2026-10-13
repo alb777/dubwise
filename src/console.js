@@ -2,11 +2,59 @@
 /**
  * The dub console: turns what the player types into commands. Pure, so the tests can drive it.
  */
+import { readIntent } from "../skills/dubwise/scripts/composer.mjs";
 import { DRUMS, SPEC } from "../skills/dubwise/scripts/notation.mjs";
 
 export const CHANNELS = /** @type {const} */ (["kick", "rim", "hat", "bass", "skank", "siren"]);
 export const PRESETS = /** @type {const} */ (["one-drop", "rockers", "steppers"]);
 const SETTINGS = new Set(["bpm", "key", "swing", "bars", "echo", "spring", "bass", "chords", ...DRUMS]);
+const COMMAND_WORDS = [
+    "play",
+    "stop",
+    "show",
+    "share",
+    "help",
+    "notation",
+    "clear",
+    "unsolo",
+    "again",
+    "undo",
+    "mute",
+    "unmute",
+    "solo",
+    "throw",
+    "filter",
+    "preset",
+    "prompt",
+];
+
+/** Edits between two words, a swap of neighbours counting as one, so "stpo" is one edit from "stop". */
+function distance(/** @type {string} */ a, /** @type {string} */ b) {
+    const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
+    for (let j = 1; j <= b.length; j++) d[0][j] = j;
+    for (let i = 1; i <= a.length; i++) {
+        for (let j = 1; j <= b.length; j++) {
+            const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+            d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + cost);
+            if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1])
+                d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
+        }
+    }
+    return d[a.length][b.length];
+}
+
+/** The command a word is one slip away from (two for long words), if any. @param {string} word */
+function nearestCommand(word) {
+    if (word.length < 3) return undefined;
+    const limit = word.length >= 6 ? 2 : 1;
+    let best;
+    let bestDistance = limit + 1;
+    for (const command of COMMAND_WORDS) {
+        const edits = distance(word, command);
+        if (edits < bestDistance) [best, bestDistance] = [command, edits];
+    }
+    return best;
+}
 
 export const COMMANDS = `commands
   play, stop                start or stop the riddim
@@ -111,7 +159,11 @@ export function parseCommand(input) {
             return { type: "compose", request: arg };
     }
     if (SETTINGS.has(first)) return { type: "line", line: text };
-    // Anything else is an idea for the composer, which declines text it finds nothing in.
+    // A word or two that is one slip from a command is a typo, unless the composer reads something in it,
+    // so "pla" never replaces the riddim while "slow" or "sol maior" still compose.
+    const meant = rest.length <= 1 ? nearestCommand(word) : undefined;
+    if (meant && !readIntent(text).matched.length) return error(`did you mean "${[meant, ...rest].join(" ")}"?`);
+    // Anything else is an idea for the composer.
     return { type: "compose", request: text };
 }
 

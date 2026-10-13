@@ -153,15 +153,64 @@ describe("composing", () => {
         assert.ok(count > 400);
     });
 
-    it("refuses text with nothing to go on, so a typo never replaces the riddim", () => {
-        for (const text of ["pla", "asdf", "i like it", "hello there"]) {
-            assert.equal(compose(text).understood, false, text);
+    it("never refuses an idea, however odd", () => {
+        const ideas = [
+            "Martin Campbell style",
+            "make something like Koffee",
+            "something inspired by the new jamaican era",
+            "a riddim for a cat chasing a laser in space",
+            "dancehall riddim like the 90s",
+            "rocksteady love song",
+            "hello there",
+            "i like it",
+            "asdf",
+            "1234",
+            "a b c d e f g",
+            "uma base pra tocar no churrasco de domingo",
+            "algo que lembre chuva na janela",
+            "un ritmo para bailar bajo la luna",
+            "🔥🔥 vibes 🔥🔥",
+            "Koffee x Chronixx x Protoje",
+            "what would a robot play at a sound system clash",
+            "ダブ",
+            "dub ".repeat(300),
+        ];
+        for (const idea of ideas) {
+            for (let take = 0; take < 3; take++) riddimFor(idea, take);
         }
     });
 
-    it("composes from an unknown reference and says so", () => {
-        const result = compose("inspirado em Fulano de Tal");
-        assert.equal(result.understood, true);
-        assert.match(result.summary, /I don't know "fulano de tal"/);
+    it("says which words it did not know", () => {
+        const cases = [
+            ["Martin Campbell style", /I don't know "martin campbell" yet, .*add a style, mood or tempo/],
+            ["make something like Koffee", /I don't know "koffee" yet/],
+            [
+                "a slow one drop for the new jamaican era",
+                /I don't know "new jamaican era", so I went by the other words/,
+            ],
+            ["inspirado em Fulano de Tal", /I don't know "fulano de tal"/],
+            ["a riddim for a cat chasing a laser in space", /I don't know "cat chasing a laser", so I went by/],
+        ];
+        for (const [idea, note] of cases) assert.match(riddimFor(idea).result.summary, note, idea);
+    });
+
+    it("does not complain about words it understood", () => {
+        const ideas = [
+            "crie um riddim inspirado em augustus pablo",
+            "a dark steppers in D minor at 80 bpm",
+            "um one drop alegre bem lento com muito eco",
+            "Em Ré menor, por favor",
+            "rockers in F# major",
+            "one drop 66bpm",
+            "Iration Steppas meets King Tubby",
+            "make me a heavy dark dub with lots of echo",
+            "un riddim en la menor",
+            "i like it",
+        ];
+        for (const idea of ideas) assert.doesNotMatch(riddimFor(idea).result.summary, /don't know/, idea);
+    });
+
+    it("declines only text with no words in it", () => {
+        for (const text of ["?!", "🔥🔥🔥", "..."]) assert.equal(compose(text).understood, false, text);
     });
 });
