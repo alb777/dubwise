@@ -10,7 +10,7 @@ import { join } from "node:path";
 import { ROOT, withPage } from "../tests/browser/cdp.mjs";
 
 const WIDTH = 1280;
-const HEIGHT = 1000;
+const HEIGHT = 1140;
 const work = join(tmpdir(), `dubwise-video-${process.pid}`);
 mkdirSync(work, { recursive: true });
 
@@ -81,6 +81,8 @@ await withPage(
         /** Type into the console a key at a time, then press Enter. @param {string} text */
         const type = async (text) => {
             await click("#command");
+            if (!(await evaluate("document.activeElement?.id === 'command'")))
+                throw new Error(`the console is out of the ${WIDTH}x${HEIGHT} window, so "${text}" would go nowhere`);
             for (const char of text) {
                 await send("Input.insertText", { text: char });
                 await wait(40);
@@ -148,33 +150,41 @@ await withPage(
         await wait(2000);
         firstIdea = await evaluate("Date.now() / 1000");
         await type("Iration Steppas meets King Tubby");
-        await wait(5500);
+        await wait(5000);
         await hold('.strip[data-channel="skank"] .throw', 500);
-        await wait(2000);
-        await siren(3200);
         await wait(1500);
-        await type("a slow one drop for a rainy night");
-        await wait(5000);
-        await sweep(-0.85);
-        await wait(1000);
-        await type("Natiruts na praia");
-        await wait(5500);
-        await type("un ritmo para bailar bajo la luna");
-        await wait(5000);
-        await hold('.strip[data-channel="rim"] .throw', 450);
-        await wait(1500);
-        await type("furious robots in the factory");
-        await wait(5000);
-        await type("mute bass");
-        await wait(3000);
-        await type("unmute bass");
+        await type("a bit faster");
+        await wait(3500);
+        await click('[data-fx="crash"]');
         await wait(2500);
-        await type("Damian Marley meets Lee Perry");
-        await wait(5500);
-        await hold('.strip[data-channel="rim"] .throw', 450);
-        await wait(2000);
-        await sweep(0.7);
+        await siren(3000);
+        await wait(1500);
+        await type("Beethoven in steppers");
+        await wait(5000);
+        await hold('[data-fx="spin"]', 2500);
         await wait(3000);
+        await type("funk carioca meets King Tubby");
+        await wait(4500);
+        await click('[data-fx="horn"]');
+        await wait(2500);
+        await click('[data-fx="phaser"]');
+        await wait(4500);
+        await click('[data-fx="phaser"]');
+        await wait(1000);
+        await type("a slow one drop for a rainy night");
+        await wait(4500);
+        await sweep(-0.85);
+        await wait(500);
+        await type("brighter");
+        await wait(4000);
+        await type("mute bass");
+        await wait(2500);
+        await type("unmute bass");
+        await wait(3000);
+        await click('[data-fx="pull-up"]');
+        await wait(4500);
+        await sweep(0.7);
+        await wait(2500);
 
         audio = await evaluate(`new Promise((resolve) => {
             window.__recorder.onstop = async () => {
