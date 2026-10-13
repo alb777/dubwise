@@ -37,7 +37,7 @@
                     const buffer = await renderRiddim(OfflineAudioContext, (c) => createEngine(c), riddim, { seconds: 4 });
                     result[name] = measure(buffer);
                 }
-                for (const idea of ["crie um riddim inspirado em augustus pablo", "steppers in E minor heavy bass"]) {
+                for (const idea of ["crie um riddim inspirado em augustus pablo", "steppers in E minor heavy bass", "Iration Steppas meets King Tubby"]) {
                     const { riddim } = parse(compose(idea).text);
                     const buffer = await renderRiddim(OfflineAudioContext, (c) => createEngine(c), riddim, { seconds: 6 });
                     result[idea] = measure(buffer);

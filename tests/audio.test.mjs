@@ -187,6 +187,7 @@ describe("audio", () => {
 
     for (const idea of [
         "crie um riddim inspirado em augustus pablo",
+        "Iration Steppas meets King Tubby",
         "dub techno em Fm",
         "steppers in E minor heavy bass",
     ]) {

@@ -17,7 +17,10 @@ import { bassMidi, parse, STEPS_PER_BAR } from "./notation.mjs";
  * @typedef {{ name: string, aliases: string[], style: Style, bpm: number, mode: Mode, echo: Amount,
  *   density: Density, bass: BassMove, traits: string }} Artist
  * @typedef {{ style?: Style, bpm?: number, tempo?: "slow" | "fast", root?: string, mode?: Mode, echo?: Amount,
- *   density?: Density, bass?: BassMove, artist?: Artist, unknownReference?: string, matched: string[] }} Intent
+ *   density?: Density, bass?: BassMove, artist?: Artist, mixArtist?: Artist, unknownReference?: string,
+ *   matched: string[] }} Intent
+ * `artist` is the first name in the idea and sets drums and tempo; `mixArtist`, a second name as in
+ * "Iration Steppas meets King Tubby", sets echo, bass and mood.
  */
 
 /**
@@ -104,7 +107,7 @@ export const ARTISTS = [
     },
     {
         name: "UK steppers",
-        aliases: ["iration steppas", "zion train", "uk steppers", "uk dub"],
+        aliases: ["zion train", "uk steppers", "uk dub"],
         style: "steppers",
         bpm: 76,
         mode: "minor",
@@ -112,6 +115,39 @@ export const ARTISTS = [
         density: "busy",
         bass: "root",
         traits: "four on the floor and a heavy sub",
+    },
+    {
+        name: "Iration Steppas",
+        aliases: ["iration steppas", "iration"],
+        style: "steppers",
+        bpm: 138,
+        mode: "minor",
+        echo: "high",
+        density: "busy",
+        bass: "root",
+        traits: "Leeds Year 3000 dub, heavy bass and synths, up to frenetic techno crossovers",
+    },
+    {
+        name: "Alpha Steppa",
+        aliases: ["alpha steppa"],
+        style: "steppers",
+        bpm: 76,
+        mode: "minor",
+        echo: "high",
+        density: "sparse",
+        bass: "melodic",
+        traits: "new school UK steppers from a sound system family, open to bass music",
+    },
+    {
+        name: "O.B.F",
+        aliases: ["original bass foundation", "o b f", "obf"],
+        style: "steppers",
+        bpm: 76,
+        mode: "minor",
+        echo: "high",
+        density: "busy",
+        bass: "root",
+        traits: "Geneva area sound system mixing 90s UK dub with today's urban bass",
     },
     {
         name: "The Wailers",
@@ -380,21 +416,26 @@ export function readIntent(request) {
     const text = normalize(request);
     /** @type {Intent} */
     const intent = { matched: [] };
+    // Artist names are taken out first, so "Iration Steppas" does not also read as the steppers style.
+    let words = text;
     /** @param {keyof typeof WORDS} meaning */
     const found = (meaning) => {
-        const word = WORDS[meaning].find((w) => has(text, w));
+        const word = WORDS[meaning].find((w) => has(words, w));
         if (word) intent.matched.push(word);
         return Boolean(word);
     };
 
+    // Every artist named, in the order they appear: the first sets the drums, a second one the mix.
+    const named = [];
     for (const artist of ARTISTS) {
         const alias = artist.aliases.find((a) => has(text, a));
-        if (alias) {
-            intent.artist = artist;
-            intent.matched.push(alias);
-            break;
-        }
+        if (alias) named.push({ artist, alias, at: text.indexOf(` ${alias} `) });
     }
+    named.sort((a, b) => a.at - b.at);
+    for (const { alias } of named) intent.matched.push(alias);
+    intent.artist = named[0]?.artist;
+    intent.mixArtist = named[1]?.artist;
+    for (const { alias } of named) words = words.replace(` ${alias} `, " ");
     if (!intent.artist) {
         const marker = REFERENCE_MARKERS.find((m) => has(text, m));
         if (marker) {
@@ -538,13 +579,14 @@ function bassBar(random, style, density, move, chord, nextChord, key) {
 export function composeIntent(intent, seed) {
     const random = mulberry32(seed);
     const artist = intent.artist;
+    const mix = intent.mixArtist ?? artist;
     const style =
         intent.style ??
         artist?.style ??
         (intent.mode === "major"
             ? "one-drop"
             : pick(random, /** @type {const} */ (["one-drop", "rockers", "steppers"])));
-    const mode = intent.mode ?? artist?.mode ?? "minor";
+    const mode = intent.mode ?? mix?.mode ?? "minor";
     const root = intent.root ?? pick(random, mode === "minor" ? MINOR_ROOTS : MAJOR_ROOTS);
     const shift = intent.tempo === "slow" ? -6 : intent.tempo === "fast" ? 8 : 0;
     const bpm =
@@ -553,9 +595,9 @@ export function composeIntent(intent, seed) {
             Math.min(200, Math.max(50, (artist?.bpm ?? STYLE_BPM[style]) + shift + Math.floor(random() * 5) - 2)),
         );
     const density = intent.density ?? artist?.density ?? "normal";
-    const echo = intent.echo ?? artist?.echo ?? "mid";
-    const move = intent.bass ?? artist?.bass ?? (style === "steppers" ? "root" : "melodic");
-    const chords = artist?.name === "dub techno" ? [["1"], ["1"]] : pick(random, PROGRESSIONS[mode]);
+    const echo = intent.echo ?? mix?.echo ?? "mid";
+    const move = intent.bass ?? mix?.bass ?? (style === "steppers" ? "root" : "melodic");
+    const chords = mix?.name === "dub techno" ? [["1"], ["1"]] : pick(random, PROGRESSIONS[mode]);
 
     const kick = { "one-drop": "........x.......", rockers: "x.......x.......", steppers: "x...x...x...x..." }[style];
     const rim = density === "busy" && style !== "steppers" ? "........x.....x." : "........x.......";
@@ -595,7 +637,12 @@ export function composeIntent(intent, seed) {
     let summary = `${label} at ${bpm} bpm in ${root} ${mode}, ${move === "melodic" ? "melodic" : "rooted"} bass, ${
         { low: "dry", mid: "some", high: "wide" }[echo]
     } echo`;
-    if (artist) summary += `, inspired by ${artist.name}: ${artist.traits}`;
+    if (artist && intent.mixArtist) {
+        const other = intent.mixArtist;
+        summary += `, ${artist.name} meets ${other.name}: drums and tempo from ${artist.name} (${artist.traits}), echo and bass from ${other.name} (${other.traits})`;
+    } else if (artist) {
+        summary += `, inspired by ${artist.name}: ${artist.traits}`;
+    }
     return { text: `${text}\n`, summary };
 }
 

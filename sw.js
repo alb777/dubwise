@@ -1,6 +1,6 @@
 // Offline support: the whole app is cached on the first visit, then served from the cache.
 // VERSION is a hash of the precached files, stamped by `npm run sw:version`; a test fails when it is stale.
-const VERSION = "dubwise-bcd8ac0441";
+const VERSION = "dubwise-5cc176c7c3";
 const PRECACHE = [
     "./",
     "index.html",

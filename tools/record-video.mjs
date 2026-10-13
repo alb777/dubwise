@@ -143,7 +143,7 @@ await withPage(
         await wait(2500);
         await sweep(-0.85);
         await wait(1500);
-        await type("make a riddim inspired by Augustus Pablo");
+        await type("Iration Steppas meets King Tubby");
         await wait(5000);
         await hold('.strip[data-channel="skank"] .throw', 500);
         await wait(2500);
@@ -153,7 +153,7 @@ await withPage(
         await wait(3300);
         await type("unmute bass");
         await wait(3000);
-        await type("a dark steppers in E minor with lots of echo");
+        await type("a slow dark one drop in E minor with lots of echo");
         await wait(5500);
         await hold('.strip[data-channel="rim"] .throw', 450);
         await wait(2500);

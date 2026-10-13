@@ -79,6 +79,31 @@ describe("composing", () => {
         for (const beat of [0, 4, 8, 12]) assert.equal(steppers[beat], 1);
     });
 
+    it("blends two references, X meets Y", () => {
+        const intent = readIntent("Iration Steppas meets King Tubby");
+        assert.equal(intent.artist?.name, "Iration Steppas");
+        assert.equal(intent.mixArtist?.name, "King Tubby");
+        const { riddim, result } = riddimFor("Iration Steppas meets King Tubby");
+        for (const beat of [0, 4, 8, 12])
+            assert.equal(riddim.drums.kick[beat], 1, "steppers drums from Iration Steppas");
+        assert.ok(riddim.bpm >= 130, `fast tempo from Iration Steppas, got ${riddim.bpm}`);
+        assert.equal(riddim.echo.feedback, 0.65, "wide echo from King Tubby");
+        assert.match(result.summary, /Iration Steppas meets King Tubby: drums and tempo from Iration Steppas/);
+    });
+
+    it("lets the order decide who leads", () => {
+        const { riddim } = riddimFor("King Tubby meets Iration Steppas");
+        assert.equal(riddim.drums.kick[0], 0, "one drop drums from King Tubby");
+        assert.ok(riddim.bpm < 90, `dub tempo from King Tubby, got ${riddim.bpm}`);
+    });
+
+    it("lets explicit words beat both references", () => {
+        const { riddim } = riddimFor("Iration Steppas meets King Tubby in A major at 90 bpm, dry");
+        assert.deepEqual(riddim.key, { root: "A", mode: "major" });
+        assert.equal(riddim.bpm, 90);
+        assert.equal(riddim.echo.feedback, 0.35);
+    });
+
     it("honours an explicit key and tempo", () => {
         const { riddim } = riddimFor("a dark steppers in D minor at 80 bpm");
         assert.deepEqual(riddim.key, { root: "D", mode: "minor" });
@@ -116,6 +141,7 @@ describe("composing", () => {
             "steppers 140 bpm heavy bass",
             "un riddim en la menor",
             ...ARTISTS.map((artist) => `inspired by ${artist.aliases[0]}`),
+            ...ARTISTS.map((artist, i) => `${artist.aliases[0]} meets ${ARTISTS[(i + 3) % ARTISTS.length].aliases[0]}`),
         ];
         let count = 0;
         for (const idea of ideas) {
