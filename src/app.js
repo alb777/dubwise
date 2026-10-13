@@ -25,9 +25,9 @@ import {
     browserModelCached,
     chromeAvailability,
     ENDPOINTS,
-    loadBrowserModel,
     loadKey,
     loadSettings,
+    prepareBrowserModel,
     readIdea,
     saveKey,
     saveSettings,
@@ -220,13 +220,16 @@ async function composeIdea(request, askAnyway = false) {
     state.lastRequest = request;
     state.take = 0;
     state.reading = null;
-    if (state.ai.provider !== "off" && (askAnyway || readIntent(request).unknown.length)) {
+    const { unknown } = readIntent(request);
+    if (state.ai.provider !== "off" && (askAnyway || unknown.length)) {
+        // The AI reads only what the word lists miss, so a known name in the same idea does not color its reading.
+        const subject = unknown.length ? unknown.join(", ") : request;
         const controller = new AbortController();
         asking = controller;
         const line = print("asking the AI…", "dim");
         setAIState("busy");
         try {
-            state.reading = await readIdea(state.ai, request, {
+            state.reading = await readIdea(state.ai, subject, {
                 signal: controller.signal,
                 onProgress: (fraction, text) => {
                     line.textContent = `loading the AI model, ${Math.round(fraction * 100)}% (${text.slice(0, 60)})`;
@@ -739,8 +742,11 @@ async function warmUpBrowserModel() {
     const line = print("loading the AI model…", "dim");
     setAIState("busy");
     try {
-        await loadBrowserModel(state.ai.size, (fraction) => {
-            line.textContent = `loading the AI model, ${Math.round(fraction * 100)}%`;
+        await prepareBrowserModel(state.ai.size, (fraction, text) => {
+            line.textContent =
+                text === "warming up"
+                    ? "warming up the AI model…"
+                    : `loading the AI model, ${Math.round(fraction * 100)}%`;
         });
         line.textContent = "the AI model is loaded and ready";
         line.className = "ok";
@@ -920,6 +926,8 @@ document.addEventListener("pointerdown", (event) => {
 });
 ui.guideToggle.addEventListener("click", () => showGuide(!guideOpen(), true));
 setAIState(state.ai.provider === "off" ? "off" : "on");
+// With the in-browser model picked on an earlier visit, load and warm it while the page is idle, so ideas do not wait.
+if (state.ai.provider === "browser") setTimeout(() => void warmUpBrowserModel(), 1000);
 /** @type {HTMLSelectElement} */ (/** @type {unknown} */ (aiField("preset"))).replaceChildren(
     new Option("my own address", "custom"),
     ...Object.entries(ENDPOINTS).map(([id, endpoint]) => new Option(endpoint.name, id)),

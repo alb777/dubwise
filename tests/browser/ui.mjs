@@ -18,12 +18,20 @@ const SPY_FILM = {
 };
 let aiRequests = 0;
 let failing = false;
+/** The last idea the app asked the AI about. */
+let askedAbout = "";
 const aiServer = createServer((request, response) => {
     response.setHeader("access-control-allow-origin", "*");
     response.setHeader("access-control-allow-headers", "content-type, authorization");
     if (request.method === "OPTIONS") return response.writeHead(204).end();
     aiRequests++;
-    request.resume();
+    let body = "";
+    request.on("data", (chunk) => {
+        body += chunk;
+    });
+    request.on("end", () => {
+        askedAbout = JSON.parse(body || "{}").messages?.at(-1)?.content ?? "";
+    });
     if (failing)
         return response.writeHead(503, { "content-type": "application/json" }).end('{"error":{"message":"busy"}}');
     response.writeHead(200, { "content-type": "application/json" });
@@ -280,6 +288,11 @@ await withPage("/", async (page) => {
     await wait(600);
     const read = (await evaluate(lines("ok"))).at(-1) ?? "";
     check("the AI reads what the word lists miss", read.includes('the AI read "martin campbell" as: spy film'), read);
+    check(
+        "the AI is asked only about the words dubwise does not know",
+        askedAbout === "Idea: martin campbell",
+        askedAbout,
+    );
     check(
         "the riddim follows the reading",
         (await evaluate("document.getElementById('keyinfo').textContent")).endsWith(" minor") &&

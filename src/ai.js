@@ -200,10 +200,15 @@ export function loadBrowserModel(size, onProgress) {
         worker = new Worker(new URL("./ai-worker.js", import.meta.url), { type: "module" });
         const id = f16 ? BROWSER_MODELS[size].f16 : BROWSER_MODELS[size].f32;
         try {
-            return await webllm.CreateWebWorkerMLCEngine(worker, id, {
+            const engine = await webllm.CreateWebWorkerMLCEngine(worker, id, {
                 /** @param {{ progress: number, text: string }} report */
                 initProgressCallback: (report) => onProgress?.(report.progress, report.text),
             });
+            // The GPU compiles its shaders on the first answer, about ten seconds. A two-token answer in the same
+            // form does that now, so the first real idea is read in two or three seconds.
+            onProgress?.(1, "warming up");
+            await engine.chat.completions.create(request("warm up", 2));
+            return engine;
         } catch (error) {
             worker?.terminate();
             // A download cut short surfaces as a cache or fetch error; say what it means instead.
@@ -252,6 +257,25 @@ export async function onLiveGpu(attempt, reset) {
     }
 }
 
+/**
+ * Load and warm the in-browser model ahead of the first idea, starting again once if the GPU is lost on the way.
+ * @param {ModelSize} size @param {Progress} [onProgress]
+ */
+export function prepareBrowserModel(size, onProgress) {
+    return onLiveGpu(() => loadBrowserModel(size, onProgress), dropBrowserModel);
+}
+
+/** A reading request for the in-browser model. @param {string} idea @param {number} tokens */
+function request(idea, tokens) {
+    return {
+        messages: readingMessages(idea),
+        temperature: 0,
+        max_tokens: tokens,
+        response_format: { type: "json_object", schema: JSON.stringify(READING_SCHEMA) },
+        extra_body: { enable_thinking: false },
+    };
+}
+
 /** Whether a model is already downloaded, so turning it on costs no data. @param {ModelSize} size */
 export async function browserModelCached(size) {
     try {
@@ -267,13 +291,7 @@ export async function browserModelCached(size) {
 async function readWithBrowser(size, idea, onProgress) {
     const reply = await onLiveGpu(async () => {
         const engine = await loadBrowserModel(size, onProgress);
-        return engine.chat.completions.create({
-            messages: readingMessages(idea),
-            temperature: 0,
-            max_tokens: 200,
-            response_format: { type: "json_object", schema: JSON.stringify(READING_SCHEMA) },
-            extra_body: { enable_thinking: false },
-        });
+        return engine.chat.completions.create(request(idea, 200));
     }, dropBrowserModel);
     const reading = sanitizeReading(reply?.choices?.[0]?.message?.content);
     if (!reading) throw new Error("the answer did not fit the form");
