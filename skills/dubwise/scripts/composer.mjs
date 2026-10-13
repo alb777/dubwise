@@ -6,6 +6,7 @@
  *
  * Artist references shape style, tempo and feel only. Nothing here holds or copies a real song.
  */
+import { ARTISTS } from "./artists.mjs";
 import { bassMidi, parse, STEPS_PER_BAR } from "./notation.mjs";
 
 /** @typedef {"one-drop" | "rockers" | "steppers"} Style */
@@ -22,172 +23,17 @@ import { bassMidi, parse, STEPS_PER_BAR } from "./notation.mjs";
  * `artist` is the first name in the idea and sets drums and tempo; `mixArtist`, a second name as in
  * "Iration Steppas meets King Tubby", sets echo, bass and mood. `unknown` holds the phrases nothing
  * here understood, such as "martin campbell" in "Martin Campbell style".
+ * @typedef {Pick<Intent, "style" | "tempo" | "mode" | "echo" | "density" | "bass">} Feel
  */
 
-/**
- * Style traits commonly associated with artists and scenes. Broad strokes, no songs.
- * @type {Artist[]}
- */
-export const ARTISTS = [
-    {
-        name: "Augustus Pablo",
-        aliases: ["augustus pablo", "pablo"],
-        style: "rockers",
-        bpm: 74,
-        mode: "minor",
-        echo: "high",
-        density: "sparse",
-        bass: "melodic",
-        traits: "minor-key Far East mood, deep melodic bass, spacious echo",
-    },
-    {
-        name: "King Tubby",
-        aliases: ["king tubby", "tubbys", "tubby"],
-        style: "one-drop",
-        bpm: 72,
-        mode: "minor",
-        echo: "high",
-        density: "sparse",
-        bass: "melodic",
-        traits: "heavy echo and spring, channels dropping in and out",
-    },
-    {
-        name: "Lee Perry",
-        aliases: ["lee scratch perry", "lee perry", "scratch perry", "upsetter", "black ark"],
-        style: "one-drop",
-        bpm: 68,
-        mode: "minor",
-        echo: "high",
-        density: "busy",
-        bass: "melodic",
-        traits: "slow, dense and swampy, soaked in spring",
-    },
-    {
-        name: "Scientist",
-        aliases: ["scientist"],
-        style: "one-drop",
-        bpm: 72,
-        mode: "minor",
-        echo: "high",
-        density: "sparse",
-        bass: "root",
-        traits: "sparse and dramatic, long echo throws",
-    },
-    {
-        name: "Sly & Robbie",
-        aliases: ["sly and robbie", "sly & robbie", "sly dunbar", "robbie shakespeare", "black uhuru"],
-        style: "rockers",
-        bpm: 76,
-        mode: "minor",
-        echo: "low",
-        density: "busy",
-        bass: "root",
-        traits: "tight, driving rockers drums under a heavy bass",
-    },
-    {
-        name: "Jah Shaka",
-        aliases: ["jah shaka", "shaka"],
-        style: "steppers",
-        bpm: 74,
-        mode: "minor",
-        echo: "high",
-        density: "busy",
-        bass: "root",
-        traits: "militant UK steppers, heavy sub, sirens",
-    },
-    {
-        name: "Mad Professor",
-        aliases: ["mad professor", "ariwa"],
-        style: "steppers",
-        bpm: 76,
-        mode: "minor",
-        echo: "high",
-        density: "sparse",
-        bass: "melodic",
-        traits: "spacey UK dub, effects up front",
-    },
-    {
-        name: "UK steppers",
-        aliases: ["zion train", "uk steppers", "uk dub"],
-        style: "steppers",
-        bpm: 76,
-        mode: "minor",
-        echo: "high",
-        density: "busy",
-        bass: "root",
-        traits: "four on the floor and a heavy sub",
-    },
-    {
-        name: "Iration Steppas",
-        aliases: ["iration steppas", "iration"],
-        style: "steppers",
-        bpm: 138,
-        mode: "minor",
-        echo: "high",
-        density: "busy",
-        bass: "root",
-        traits: "Leeds Year 3000 dub, heavy bass and synths, up to frenetic techno crossovers",
-    },
-    {
-        name: "Alpha Steppa",
-        aliases: ["alpha steppa"],
-        style: "steppers",
-        bpm: 76,
-        mode: "minor",
-        echo: "high",
-        density: "sparse",
-        bass: "melodic",
-        traits: "new school UK steppers from a sound system family, open to bass music",
-    },
-    {
-        name: "O.B.F",
-        aliases: ["original bass foundation", "o b f", "obf"],
-        style: "steppers",
-        bpm: 76,
-        mode: "minor",
-        echo: "high",
-        density: "busy",
-        bass: "root",
-        traits: "Geneva area sound system mixing 90s UK dub with today's urban bass",
-    },
-    {
-        name: "The Wailers",
-        aliases: ["bob marley", "marley", "wailers", "carlton barrett", "family man"],
-        style: "one-drop",
-        bpm: 74,
-        mode: "minor",
-        echo: "low",
-        density: "busy",
-        bass: "melodic",
-        traits: "roots one drop, melodic bass, skank on 2 and 4",
-    },
-    {
-        name: "Burning Spear",
-        aliases: ["burning spear"],
-        style: "one-drop",
-        bpm: 70,
-        mode: "minor",
-        echo: "low",
-        density: "sparse",
-        bass: "root",
-        traits: "hypnotic roots one drop",
-    },
-    {
-        name: "dub techno",
-        aliases: ["basic channel", "rhythm and sound", "rhythm & sound", "dub techno"],
-        style: "steppers",
-        bpm: 118,
-        mode: "minor",
-        echo: "high",
-        density: "sparse",
-        bass: "root",
-        traits: "minimal four on the floor, chords drowned in echo",
-    },
-];
+/** Every alias with its artist, longest first, so "damian marley" is read before "marley". */
+const ALIASES = ARTISTS.flatMap((artist) => artist.aliases.map((alias) => ({ artist, alias }))).sort(
+    (a, b) => b.alias.length - a.alias.length,
+);
 
 /** Words per meaning, accents stripped, matched as whole words or phrases. Longer phrases are checked first. */
 const WORDS = {
-    "one-drop": ["one drop", "onedrop", "one-drop", "roots"],
+    "one-drop": ["one drop", "onedrop", "one-drop", "roots", "raiz", "raices"],
     rockers: ["rockers", "rocker"],
     steppers: [
         "steppers",
@@ -200,8 +46,45 @@ const WORDS = {
         "quatro por quatro",
         "4/4",
     ],
-    slow: ["slow", "lento", "lenta", "devagar", "calmo", "calma", "relaxed", "relaxado", "chill", "despacio"],
-    fast: ["fast", "rapido", "rapida", "acelerado", "quick", "upbeat", "veloz"],
+    slow: [
+        "slow",
+        "lento",
+        "lenta",
+        "devagar",
+        "calmo",
+        "calma",
+        "relaxed",
+        "relaxado",
+        "chill",
+        "despacio",
+        "laid back",
+        "laidback",
+        "mellow",
+        "calm",
+        "peaceful",
+        "smooth",
+        "tranquilo",
+        "tranquila",
+        "sereno",
+        "serena",
+        "suave",
+    ],
+    fast: [
+        "fast",
+        "rapido",
+        "rapida",
+        "acelerado",
+        "quick",
+        "upbeat",
+        "veloz",
+        "lively",
+        "speedy",
+        "hurry",
+        "animado",
+        "animada",
+        "pressa",
+        "prisa",
+    ],
     minor: [
         "dark",
         "sombrio",
@@ -224,8 +107,37 @@ const WORDS = {
         "eerie",
         "minor",
         "menor",
+        "sinister",
+        "scary",
+        "creepy",
+        "spooky",
+        "evil",
+        "horror",
+        "terror",
+        "tense",
+        "serious",
+        "sinistro",
+        "sinistra",
+        "assustador",
+        "assustadora",
+        "macabro",
+        "macabra",
+        "tenebroso",
+        "tenebrosa",
+        "tenso",
+        "tensa",
+        "medo",
+        "siniestro",
+        "siniestra",
+        "miedo",
+        "oscura",
     ],
     major: [
+        "good vibes",
+        "good vibe",
+        "boas vibes",
+        "boa onda",
+        "buena onda",
         "happy",
         "alegre",
         "feliz",
@@ -237,8 +149,50 @@ const WORDS = {
         "positivo",
         "major",
         "maior",
+        "joyful",
+        "cheerful",
+        "fun",
+        "funny",
+        "playful",
+        "positive",
+        "radiant",
+        "beautiful",
+        "divertido",
+        "divertida",
+        "alegria",
+        "felicidade",
+        "felicidad",
+        "luminoso",
+        "luminosa",
+        "radiante",
+        "contente",
+        "contento",
+        "positiva",
+        "brillante",
+        "lindo",
+        "linda",
+        "bonito",
+        "bonita",
+        "hermoso",
+        "hermosa",
     ],
-    dry: ["sem eco", "no echo", "without echo", "dry", "seco", "seca", "clean", "limpo"],
+    dry: [
+        "sem eco",
+        "no echo",
+        "without echo",
+        "dry",
+        "seco",
+        "seca",
+        "clean",
+        "limpo",
+        "sin eco",
+        "sem efeitos",
+        "sem efeito",
+        "sin efectos",
+        "tight",
+        "punchy",
+        "crisp",
+    ],
     wet: [
         "muito eco",
         "lots of echo",
@@ -256,8 +210,45 @@ const WORDS = {
         "wet",
         "profundo",
         "deep",
+        "echoes",
+        "ecos",
+        "psychedelic",
+        "psicodelico",
+        "psicodelica",
+        "trippy",
+        "ethereal",
+        "etereo",
+        "eterea",
+        "atmospheric",
+        "atmosferico",
+        "atmosferica",
+        "trip",
+        "journey",
+        "voyage",
+        "viagem",
+        "viajar",
+        "viaje",
     ],
-    sparse: ["minimal", "minimalista", "sparse", "esparso", "vazio", "simple", "simples", "stripped", "cru"],
+    sparse: [
+        "minimal",
+        "minimalista",
+        "sparse",
+        "esparso",
+        "vazio",
+        "simple",
+        "simples",
+        "stripped",
+        "cru",
+        "empty",
+        "bare",
+        "raw",
+        "spacious",
+        "espacoso",
+        "espacosa",
+        "vacio",
+        "sencillo",
+        "minimo",
+    ],
     busy: [
         "busy",
         "agitado",
@@ -271,9 +262,46 @@ const WORDS = {
         "dance",
         "danceable",
         "bubble",
+        "bouncy",
+        "bounce",
+        "driving",
+        "dancing",
+        "dancar",
+        "bailar",
+        "bailable",
+        "baile",
+        "full",
+        "lleno",
+        "llena",
     ],
-    melodic: ["melodic", "melodico", "melodica", "walking", "caminhante", "andando"],
-    root: ["heavy bass", "baixo pesado", "bajo pesado", "sub", "pounding", "root"],
+    melodic: [
+        "melodic",
+        "melodico",
+        "melodica",
+        "walking",
+        "caminhante",
+        "andando",
+        "melody",
+        "melodia",
+        "melodioso",
+        "melodiosa",
+        "singing",
+        "lyrical",
+    ],
+    root: [
+        "sub bass",
+        "subgrave",
+        "heavy bass",
+        "baixo pesado",
+        "bajo pesado",
+        "sub",
+        "pounding",
+        "root",
+        "rumbling",
+        "rumble",
+        "booming",
+        "retumbante",
+    ],
     generic: [
         "riddim",
         "dub",
@@ -299,6 +327,14 @@ const WORDS = {
         "compor",
         "crea",
         "haz",
+        "sound system",
+        "soundsystem",
+        "instrumental",
+        "drums",
+        "drum",
+        "bateria",
+        "tambores",
+        "tambor",
     ],
 };
 /** Words that only link or soften an idea, in English, Portuguese and Spanish. They are never reported as unknown. */
@@ -312,10 +348,142 @@ const FILLER = new Set(
         "alguma coisa tipo estilo inspirado inspirada inspiracao eu quero queria bem muito muita mais pouco so isso",
         "esse essa som musica versao favor",
         "un una el la los las y del con sin en cosa quiero hazme muy mas como",
+        "what when where while which who about into under day time play playing remind reminds",
+        "que quando onde sob debaixo sobre dia vez tocar toca lembre lembra lembrar parece soa",
+        "cuando donde bajo dia suena recuerde",
     ]
         .join(" ")
         .split(" "),
 );
+/** The words of several space-separated lines. @param {...string} lines */
+const wordsOf = (...lines) => lines.join(" ").split(" ");
+/**
+ * Images that suggest a feel, so "rain on the window" or "a party on the beach" still steer the riddim. An image only
+ * fills what the plain words above left open, and images earlier in this list win, so "a happy riddim for a rainy
+ * day" stays happy and "the beach at night" turns minor.
+ * @type {{ feel: Feel, words: string[] }[]}
+ */
+const IMAGERY = [
+    {
+        // Conflict and protest march in steppers.
+        feel: { style: "steppers", mode: "minor", density: "busy", bass: "root" },
+        words: wordsOf(
+            "war battle fight fighting army soldier soldiers march marching revolution rebel rebels rebellion",
+            "riot protest warrior warriors clash resistance uprising",
+            "guerra batalha luta lutar exercito soldado soldados marcha revolucao rebelde rebeldes rebeliao",
+            "protesto guerreiro guerreira guerreiros resistencia levante",
+            "batalla lucha ejercito revolucion rebelion protesta guerrero guerreros",
+        ),
+    },
+    {
+        // Anger, streets and machines.
+        feel: { mode: "minor", density: "busy", bass: "root" },
+        words: [
+            "rude boy",
+            ...wordsOf(
+                "angry anger rage furious aggressive tough city urban street streets concrete factory machine",
+                "machines industrial traffic ghetto gangster rudeboy rudie badman",
+                "raiva furioso furiosa agressivo agressiva cidade urbano urbana rua ruas concreto fabrica maquina",
+                "maquinas transito favela quebrada periferia",
+                "rabia agresivo agresiva ciudad calle calles trafico barrio",
+            ),
+        ],
+    },
+    {
+        // Loneliness, longing and the cold.
+        feel: { style: "one-drop", mode: "minor", tempo: "slow", density: "sparse" },
+        words: [
+            "broken heart",
+            "coracao partido",
+            "corazon roto",
+            ...wordsOf(
+                "lonely alone loneliness nostalgia nostalgic melancholy tears crying cry goodbye farewell",
+                "heartbreak heartbroken longing autumn winter cold grief mourning funeral",
+                "sozinho sozinha solidao saudade saudades nostalgico nostalgica lagrimas choro chorar chorando",
+                "adeus despedida outono inverno frio fria luto",
+                "soledad lagrima llorar llorando adios otono",
+            ),
+        ],
+    },
+    {
+        // Night, rain and mystery.
+        feel: { mode: "minor", echo: "high" },
+        words: [
+            "meia noite",
+            ...wordsOf(
+                "night midnight moon moonlight rain rainy storm stormy thunder fog foggy mist smoke smoky",
+                "ghost ghosts haunted shadow shadows cave tunnel mystery mysterious darkness",
+                "noite madrugada meia-noite lua luar chuva chuvoso chuvosa garoa tempestade trovao trovoada",
+                "neblina nevoa fumaca fantasma fantasmas assombrado assombrada sombra sombras caverna tunel",
+                "misterio misterioso misteriosa escuridao",
+                "noche medianoche luna lluvia lluvioso lluviosa tormenta trueno niebla humo embrujado cueva",
+                "oscuridad",
+            ),
+        ],
+    },
+    {
+        // Prayer, sleep, dreams and the sea.
+        feel: { style: "one-drop", tempo: "slow", density: "sparse", echo: "high" },
+        words: wordsOf(
+            "meditation meditate meditative spiritual prayer temple zen yoga sleep sleepy lullaby float",
+            "floating hypnotic trance dream dreams dreamy ocean sea waves underwater submarine whale drift",
+            "drifting clouds",
+            "meditacao meditar espiritual oracao rezar templo sono dormir ninar flutuar flutuando hipnotico",
+            "hipnotica transe sonho sonhos sonhando oceano mar ondas submarino baleia nuvens",
+            "meditacion oracion sueno suenos flotar flotando olas ballena nubes",
+        ),
+    },
+    {
+        // Machines from the future and outer space.
+        feel: { style: "steppers", echo: "high" },
+        words: [
+            "disco voador",
+            "nave espacial",
+            "sci fi",
+            ...wordsOf(
+                "galaxy planet planets rocket alien aliens ufo robot robots laser lasers satellite astronaut",
+                "future futuristic cyber sci-fi spaceship mars martian",
+                "galaxia planeta planetas foguete alienigena alienigenas robo robos satelite astronauta futuro",
+                "futurista marte marciano",
+                "cohete ovni extraterrestre nave",
+            ),
+        ],
+    },
+    {
+        // Parties, chases and fire.
+        feel: { tempo: "fast", density: "busy" },
+        words: wordsOf(
+            "party dancefloor rave club festival carnival run running chase chasing race racing energy",
+            "energetic jump jumping fire hype crazy wild frantic frenetic rush punk punky rock",
+            "festa balada pista carnaval correr correndo corrida perseguicao perseguindo energia energetico",
+            "energetica pular pulando fogo louco louca doido doida selvagem frenetico frenetica agito",
+            "fiesta rumba carrera persiguiendo persecucion saltar fuego loco loca salvaje",
+        ),
+    },
+    {
+        // Sun, love and Sunday afternoons.
+        feel: { mode: "major" },
+        words: [
+            "por do sol",
+            ...wordsOf(
+                "sun sunshine summer beach island tropical morning sunday picnic barbecue bbq smile sweet love",
+                "lovely romantic romance kiss wedding sunset flowers garden birthday children kids",
+                "verao praia ilha manha domingo piquenique churrasco sorriso doce amor romantico romantica",
+                "beijo casamento flores jardim aniversario criancas primavera",
+                "verano playa isla manana sonrisa dulce beso boda atardecer jardin cumpleanos ninos",
+            ),
+        ],
+    },
+    {
+        // Lazy afternoons and the herb.
+        feel: { style: "one-drop", tempo: "slow", echo: "high" },
+        words: wordsOf(
+            "ganja herb weed spliff chalice lazy hammock sofa couch afternoon",
+            "erva maconha baseado preguica preguicoso tarde",
+            "hierba marihuana porro perezoso hamaca",
+        ),
+    },
+];
 /** Intent fields that steer the riddim. Any one of them means the idea was understood in part. */
 const STEERING = /** @type {const} */ (["style", "bpm", "tempo", "root", "mode", "echo", "density", "bass", "artist"]);
 const SOLFEGE = /** @type {Record<string, string>} */ ({
@@ -429,17 +597,19 @@ export function readIntent(request) {
         return Boolean(word);
     };
 
-    // Every artist named, in the order they appear: the first sets the drums, a second one the mix.
+    // Every artist named, in the order they appear: the first sets the drums, a second one the mix. Longer aliases
+    // go first and are blanked out at the same length, so positions still give the order.
+    /** @type {{ artist: Artist, alias: string, at: number }[]} */
     const named = [];
-    for (const artist of ARTISTS) {
-        const alias = artist.aliases.find((a) => has(text, a));
-        if (alias) named.push({ artist, alias, at: text.indexOf(` ${alias} `) });
+    for (const { artist, alias } of ALIASES) {
+        if (!has(words, alias)) continue;
+        if (!named.some((n) => n.artist === artist)) named.push({ artist, alias, at: words.indexOf(` ${alias} `) });
+        words = words.replace(` ${alias} `, ` ${"|".padEnd(alias.length)} `);
     }
     named.sort((a, b) => a.at - b.at);
     for (const { alias } of named) intent.matched.push(alias);
     intent.artist = named[0]?.artist;
     intent.mixArtist = named[1]?.artist;
-    for (const { alias } of named) words = words.replace(` ${alias} `, " ");
     for (const style of /** @type {const} */ (["one-drop", "rockers", "steppers"])) {
         if (found(style)) {
             intent.style = style;
@@ -466,6 +636,14 @@ export function readIntent(request) {
         }
     }
     readKey(request, text, intent);
+    for (const { feel, words: images } of IMAGERY) {
+        const image = images.find((w) => has(words, w));
+        if (!image) continue;
+        intent.matched.push(image);
+        // What the idea already says wins over the image, and a named artist keeps their drums.
+        const fill = intent.artist ? { ...feel, style: undefined } : feel;
+        Object.assign(intent, { ...fill, ...intent });
+    }
     found("generic");
     intent.unknown = unknownPhrases(words, intent.matched);
     return intent;
@@ -477,7 +655,11 @@ export function readIntent(request) {
  * @param {string} words normalized idea with artist names taken out @param {string[]} matched
  */
 function unknownPhrases(words, matched) {
-    const known = [...Object.values(WORDS).flat(), ...matched.map((m) => normalize(m).trim())]
+    const known = [
+        ...Object.values(WORDS).flat(),
+        ...IMAGERY.flatMap((image) => image.words),
+        ...matched.map((m) => normalize(m).trim()),
+    ]
         .filter(Boolean)
         .sort((a, b) => b.length - a.length);
     let rest = words;

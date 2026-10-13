@@ -69,6 +69,7 @@ describe("parseCommand", () => {
         ["stpo", /did you mean "stop"\?/],
         ["mte bass", /did you mean "mute bass"\?/],
         ["notaion", /did you mean "notation"\?/],
+        ["sol bass", /did you mean "solo bass"\?/],
     ];
     for (const [input, message] of errors) {
         it(`rejects ${JSON.stringify(input)}`, () => {

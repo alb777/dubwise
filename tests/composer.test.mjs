@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { ARTISTS, compose, readIntent } from "../skills/dubwise/scripts/composer.mjs";
+import { ARTISTS } from "../skills/dubwise/scripts/artists.mjs";
+import { compose, readIntent } from "../skills/dubwise/scripts/composer.mjs";
 import { bassMidi, parse } from "../skills/dubwise/scripts/notation.mjs";
 
 /** Compose, parse, and return both. */
@@ -140,17 +141,19 @@ describe("composing", () => {
             "dub techno em Fm",
             "steppers 140 bpm heavy bass",
             "un riddim en la menor",
+        ];
+        // Every reference, alone and blended, with fewer takes each so the suite stays quick.
+        const references = [
             ...ARTISTS.map((artist) => `inspired by ${artist.aliases[0]}`),
             ...ARTISTS.map((artist, i) => `${artist.aliases[0]} meets ${ARTISTS[(i + 3) % ARTISTS.length].aliases[0]}`),
         ];
         let count = 0;
-        for (const idea of ideas) {
-            for (let take = 0; take < 25; take++) {
-                riddimFor(idea, take);
-                count++;
-            }
-        }
-        assert.ok(count > 400);
+        const write = (idea, takes) => {
+            for (let take = 0; take < takes; take++, count++) riddimFor(idea, take);
+        };
+        for (const idea of ideas) write(idea, 25);
+        for (const idea of references) write(idea, 5);
+        assert.ok(count > 1000);
     });
 
     it("never refuses an idea, however odd", () => {
@@ -183,13 +186,10 @@ describe("composing", () => {
     it("says which words it did not know", () => {
         const cases = [
             ["Martin Campbell style", /I don't know "martin campbell" yet, .*add a style, mood or tempo/],
-            ["make something like Koffee", /I don't know "koffee" yet/],
-            [
-                "a slow one drop for the new jamaican era",
-                /I don't know "new jamaican era", so I went by the other words/,
-            ],
+            ["make something like The Quantum Accountants", /I don't know "quantum accountants" yet/],
+            ["a slow one drop for the quantum era", /I don't know "quantum era", so I went by the other words/],
             ["inspirado em Fulano de Tal", /I don't know "fulano de tal"/],
-            ["a riddim for a cat chasing a laser in space", /I don't know "cat chasing a laser", so I went by/],
+            ["a riddim for a cat chasing a laser in space", /I don't know "cat", so I went by the other words/],
         ];
         for (const [idea, note] of cases) assert.match(riddimFor(idea).result.summary, note, idea);
     });
@@ -212,5 +212,78 @@ describe("composing", () => {
 
     it("declines only text with no words in it", () => {
         for (const text of ["?!", "🔥🔥🔥", "..."]) assert.equal(compose(text).understood, false, text);
+    });
+});
+
+describe("references and images", () => {
+    it("reads every alias as its own artist", () => {
+        for (const artist of ARTISTS) {
+            for (const alias of artist.aliases) {
+                assert.equal(readIntent(`a riddim like ${alias}`).artist?.name, artist.name, alias);
+            }
+        }
+    });
+
+    it("prefers the longer name, so Damian Marley is not Bob Marley", () => {
+        const intent = readIntent("Damian Marley meets Bob Marley");
+        assert.equal(intent.artist?.name, "Damian Marley");
+        assert.equal(intent.mixArtist?.name, "The Wailers");
+    });
+
+    it("does not read everyday words as names", () => {
+        for (const idea of ["a riddim with culture and soul", "uma mala cheia de dub", "the bug in my code"]) {
+            assert.equal(readIntent(idea).artist, undefined, idea);
+        }
+    });
+
+    it("lets plain words beat images, and earlier images beat later ones", () => {
+        assert.equal(readIntent("a happy riddim for a rainy day").mode, "major");
+        assert.equal(readIntent("a dry riddim in the rain").echo, "low");
+        assert.equal(readIntent("the beach at night").mode, "minor");
+    });
+
+    it("keeps a named artist's drums under an image", () => {
+        const intent = readIntent("Lee Perry robots");
+        assert.equal(intent.style, undefined);
+        assert.equal(intent.echo, "high");
+        assert.match(riddimFor("Lee Perry robots").result.summary, /^one drop/);
+    });
+
+    it("reads a corpus of odd ideas", () => {
+        const corpus = [
+            ["make something like Koffee", { artist: "Koffee", unknown: [] }],
+            ["something inspired by the new jamaican era", { artist: "reggae revival", unknown: [] }],
+            ["dancehall riddim like the 90s", { artist: "dancehall", mixArtist: "the 90s" }],
+            ["rocksteady love song", { artist: "rocksteady", mode: "major", unknown: [] }],
+            [
+                "a riddim for a cat chasing a laser in space",
+                { style: "steppers", tempo: "fast", echo: "high", unknown: ["cat"] },
+            ],
+            ["uma base pra tocar no churrasco de domingo", { mode: "major", unknown: [] }],
+            ["algo que lembre chuva na janela", { mode: "minor", echo: "high" }],
+            ["un ritmo para bailar bajo la luna", { mode: "minor", echo: "high", density: "busy", unknown: [] }],
+            ["what would a robot play at a sound system clash", { style: "steppers", unknown: [] }],
+            ["Koffee x Chronixx x Protoje", { artist: "Koffee", mixArtist: "Chronixx" }],
+            ["saudade de casa num dia de chuva", { style: "one-drop", tempo: "slow", mode: "minor" }],
+            ["Natiruts na praia", { artist: "Natiruts", mode: "major", unknown: [] }],
+            ["Paprika Korps meets Twinkle Brothers", { artist: "Paprika Korps", mixArtist: "Twinkle Brothers" }],
+            ["a lullaby for a sleepy dragon", { style: "one-drop", tempo: "slow", unknown: ["dragon"] }],
+            ["guerra de travesseiros", { style: "steppers", mode: "minor" }],
+            ["furious robots in the factory", { style: "steppers", mode: "minor", bass: "root", unknown: [] }],
+            ["una fiesta en la playa", { tempo: "fast", mode: "major", unknown: [] }],
+            ["70s roots with lots of echo", { artist: "the 70s", style: "one-drop", echo: "high" }],
+            ["ska punk party", { artist: "ska", tempo: "fast", unknown: [] }],
+            ["o som das radiolas de São Luís", { artist: "reggae do Maranhão", unknown: [] }],
+            ["nyabinghi drums at midnight", { artist: "nyabinghi", mode: "minor", unknown: [] }],
+            ["um dub psicodélico pra viajar", { echo: "high", unknown: [] }],
+            ["Martin Campbell style", { artist: undefined, unknown: ["martin campbell"] }],
+        ];
+        for (const [idea, expected] of corpus) {
+            const intent = readIntent(idea);
+            const read = { ...intent, artist: intent.artist?.name, mixArtist: intent.mixArtist?.name };
+            for (const [field, value] of Object.entries(expected))
+                assert.deepEqual(read[field], value, `${idea}: ${field}`);
+            riddimFor(idea);
+        }
     });
 });
