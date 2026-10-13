@@ -1,6 +1,6 @@
 // Offline support: the whole app is cached on the first visit, then served from the cache.
-// Bump VERSION whenever a cached file changes so returning visitors get the new files.
-const VERSION = "dubwise-v1";
+// VERSION is a hash of the precached files, stamped by `npm run sw:version`; a test fails when it is stale.
+const VERSION = "dubwise-ad5ecb6b49";
 const PRECACHE = [
     "./",
     "index.html",

@@ -3,6 +3,8 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, it } from "node:test";
 
+import { contentVersion } from "../tools/sw-version.mjs";
+
 const ROOT = join(import.meta.dirname, "..");
 const read = (path) => readFileSync(join(ROOT, path), "utf8");
 
@@ -26,6 +28,11 @@ describe("offline app", () => {
             ...readdirSync(join(ROOT, "skills/dubwise/scripts")).map((name) => `skills/dubwise/scripts/${name}`),
         ];
         for (const path of expected) assert.ok(precache.includes(path), `${path} is not precached`);
+    });
+
+    it("versions the offline cache by content, so updates reach returning visitors", () => {
+        const stamped = /const VERSION = "([^"]*)";/.exec(sw)[1];
+        assert.equal(stamped, contentVersion(sw), "a precached file changed: run npm run sw:version");
     });
 
     it("has a manifest with installable icons", () => {

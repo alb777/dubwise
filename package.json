@@ -7,7 +7,8 @@
         "test": "node --test \"tests/*.test.mjs\"",
         "check": "tsc -p . && biome check .",
         "check:browser": "node tests/browser/audio.mjs && node tests/browser/ui.mjs",
-        "check:offline": "node tests/browser/offline.mjs"
+        "check:offline": "node tests/browser/offline.mjs",
+        "sw:version": "node tools/sw-version.mjs"
     },
     "devDependencies": {
         "@biomejs/biome": "2.5.14",
