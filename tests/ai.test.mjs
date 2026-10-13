@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
 
 import { READING_SCHEMA } from "../skills/dubwise/scripts/intent.mjs";
-import { asError, readWithEndpoint, WEBLLM_URL } from "../src/ai.js";
+import { asError, onLiveGpu, readWithEndpoint, WEBLLM_URL } from "../src/ai.js";
 
 const ANSWER = {
     reading: "spy film: tense, dark",
@@ -97,6 +97,46 @@ describe("failures", () => {
         for (const silent of [undefined, null, "", {}, new Error("")]) {
             assert.equal(asError(silent).message, "the model failed without saying why", String(silent));
         }
+    });
+});
+
+describe("a lost GPU", () => {
+    /** An attempt that fails with each of `errors` in turn, then answers. */
+    const flaky = (...errors) => {
+        let calls = 0;
+        const attempt = async () => {
+            const error = errors[calls++];
+            if (error) throw error;
+            return "reading";
+        };
+        return { attempt, calls: () => calls };
+    };
+
+    it("loads the model again and retries once", async () => {
+        let resets = 0;
+        const { attempt, calls } = flaky("OperationError: A valid external Instance reference no longer exists.");
+        assert.equal(await onLiveGpu(attempt, () => resets++), "reading");
+        assert.equal(resets, 1);
+        assert.equal(calls(), 2);
+    });
+
+    it("says what to do when the GPU goes twice", async () => {
+        const { attempt } = flaky(new Error("Device was lost"), new Error("GPU device lost"));
+        await assert.rejects(
+            onLiveGpu(attempt, () => {}),
+            /dropped the model twice; restart the browser/,
+        );
+    });
+
+    it("does not retry other failures", async () => {
+        let resets = 0;
+        const { attempt, calls } = flaky(new Error("the answer did not fit the form"));
+        await assert.rejects(
+            onLiveGpu(attempt, () => resets++),
+            /did not fit the form/,
+        );
+        assert.equal(resets, 0);
+        assert.equal(calls(), 1);
     });
 });
 

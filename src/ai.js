@@ -175,7 +175,7 @@ async function readWithChrome(idea, signal, onProgress) {
 
 // ----- the open model in this browser
 
-/** @type {{ size: ModelSize, engine: Promise<any> } | null} */
+/** @type {{ size: ModelSize, engine: Promise<any>, stop: () => void } | null} */
 let browserModel = null;
 
 /** Whether WebGPU is here, and whether it offers 16-bit floats. @returns {Promise<{ gpu: boolean, f16: boolean }>} */
@@ -191,11 +191,13 @@ export async function webgpuSupport() {
  */
 export function loadBrowserModel(size, onProgress) {
     if (browserModel?.size === size) return browserModel.engine;
+    /** @type {Worker | undefined} */
+    let worker;
     const engine = (async () => {
         const { gpu, f16 } = await webgpuSupport();
         if (!gpu) throw new Error("this browser has no WebGPU");
         const webllm = await import(WEBLLM_URL);
-        const worker = new Worker(new URL("./ai-worker.js", import.meta.url), { type: "module" });
+        worker = new Worker(new URL("./ai-worker.js", import.meta.url), { type: "module" });
         const id = f16 ? BROWSER_MODELS[size].f16 : BROWSER_MODELS[size].f32;
         try {
             return await webllm.CreateWebWorkerMLCEngine(worker, id, {
@@ -203,7 +205,7 @@ export function loadBrowserModel(size, onProgress) {
                 initProgressCallback: (report) => onProgress?.(report.progress, report.text),
             });
         } catch (error) {
-            worker.terminate();
+            worker?.terminate();
             // A download cut short surfaces as a cache or fetch error; say what it means instead.
             if (/cache|fetch|network/i.test(String(error)))
                 throw new Error(
@@ -212,11 +214,42 @@ export function loadBrowserModel(size, onProgress) {
             throw error instanceof Error ? error : new Error(String(error));
         }
     })();
-    browserModel = { size, engine };
+    browserModel = { size, engine, stop: () => worker?.terminate() };
     engine.catch(() => {
         if (browserModel?.engine === engine) browserModel = null;
     });
     return engine;
+}
+
+/** Let go of the loaded model and its worker, as when the GPU that held them is gone. */
+function dropBrowserModel() {
+    browserModel?.stop();
+    browserModel = null;
+}
+
+/** What browsers say when the GPU, and every model on it, is gone. */
+const LOST_GPU = /instance reference no longer exists|device (was |is )?lost|devicelost|instancedropped/i;
+
+/**
+ * Run a request on the in-browser model. If the GPU was lost on the way, as when the browser restarts its graphics
+ * process, start again from the cache with `reset` and try once more.
+ * @template T @param {() => Promise<T>} attempt @param {() => void} reset @returns {Promise<T>}
+ */
+export async function onLiveGpu(attempt, reset) {
+    try {
+        return await attempt();
+    } catch (error) {
+        if (!LOST_GPU.test(String(error))) throw error;
+        reset();
+    }
+    try {
+        return await attempt();
+    } catch (error) {
+        if (!LOST_GPU.test(String(error))) throw error;
+        throw new Error(
+            "the graphics card dropped the model twice; restart the browser, try the lighter model or pick a server",
+        );
+    }
 }
 
 /** Whether a model is already downloaded, so turning it on costs no data. @param {ModelSize} size */
@@ -232,14 +265,16 @@ export async function browserModelCached(size) {
 
 /** @param {ModelSize} size @param {string} idea @param {Progress} [onProgress] @returns {Promise<Reading>} */
 async function readWithBrowser(size, idea, onProgress) {
-    const engine = await loadBrowserModel(size, onProgress);
-    const reply = await engine.chat.completions.create({
-        messages: readingMessages(idea),
-        temperature: 0,
-        max_tokens: 200,
-        response_format: { type: "json_object", schema: JSON.stringify(READING_SCHEMA) },
-        extra_body: { enable_thinking: false },
-    });
+    const reply = await onLiveGpu(async () => {
+        const engine = await loadBrowserModel(size, onProgress);
+        return engine.chat.completions.create({
+            messages: readingMessages(idea),
+            temperature: 0,
+            max_tokens: 200,
+            response_format: { type: "json_object", schema: JSON.stringify(READING_SCHEMA) },
+            extra_body: { enable_thinking: false },
+        });
+    }, dropBrowserModel);
     const reading = sanitizeReading(reply?.choices?.[0]?.message?.content);
     if (!reading) throw new Error("the answer did not fit the form");
     return reading;
