@@ -235,8 +235,18 @@ await withPage("/", async (page) => {
     await wait(300);
     check("the ai button opens its dialog", await evaluate("document.getElementById('ai-dialog').open"));
     check(
-        "Chrome's model is only offered where the browser has it",
-        await evaluate("getComputedStyle(document.getElementById('ai-chrome')).display === 'none'"),
+        "Chrome's model is offered exactly where the browser has one",
+        await evaluate(`(async () => {
+            const model = globalThis.LanguageModel;
+            const availability = model
+                ? await model.availability({
+                      expectedInputs: [{ type: "text", languages: ["en", "es"] }],
+                      expectedOutputs: [{ type: "text", languages: ["en"] }],
+                  })
+                : "unavailable";
+            const shown = getComputedStyle(document.getElementById("ai-chrome")).display !== "none";
+            return shown === (availability !== "unavailable");
+        })()`),
     );
     await evaluate(`(() => {
         const form = document.getElementById("ai-form");
