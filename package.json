@@ -1,0 +1,16 @@
+{
+    "name": "dubwise",
+    "private": true,
+    "type": "module",
+    "description": "Dev tooling only. The app itself has no dependencies.",
+    "scripts": {
+        "test": "node --test tests/",
+        "check": "tsc -p . && biome check .",
+        "check:browser": "node tests/browser/run.mjs"
+    },
+    "devDependencies": {
+        "@biomejs/biome": "2.5.14",
+        "node-web-audio-api": "2.2.0",
+        "typescript": "7.0.2"
+    }
+}

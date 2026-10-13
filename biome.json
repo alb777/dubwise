@@ -6,11 +6,6 @@
         "lineWidth": 120
     },
     "files": {
-        "includes": [
-            "**/*.mjs",
-            "**/*.js",
-            "**/*.json",
-            "!**/node_modules"
-        ]
+        "includes": ["**/*.mjs", "**/*.js", "**/*.json", "!**/node_modules"]
     }
 }
