@@ -18,6 +18,8 @@ A dub sound system in your browser. Describe a riddim in your own words and it p
 6. **Share it.** The whole riddim lives in the link, so `share` copies a URL that plays exactly what you hear.
 7. **Describe it.** Type an idea (`inspired by Augustus Pablo`, `a dark steppers in D minor`) and dubwise writes the riddim on your machine. Blend two names the dub way, `Iration Steppas meets King Tubby`: the first sets drums and tempo, the second the echo and bass. It also understands Portuguese and Spanish, so `um one drop lento com muito eco` works too. `again` gives another version, `undo` goes back.
 8. **Ask any AI.** `prompt <idea>` copies a prompt for any chat AI. Paste its answer back into the console and it plays.
+9. **Learn it as you play.** The **guide** button (or `?`) opens a guide beside the app; its buttons run the real commands and point at the controls.
+10. **Dress it in a flag.** Pick a theme: dub, Jamaica, Ethiopia, Brazil, South Africa, Great Britain, Trinidad & Tobago or Poland. Every theme is checked for readable text and visible buttons.
 
 ## The console
 
@@ -30,6 +32,8 @@ filter <-1 to 1>          DJ filter: -1 dark, 0 open, 1 thin
 preset <name>             one-drop, rockers, steppers
 again, undo               another version of the last idea, or back one change
 show, share, help, notation, clear
+theme <name>              dub, jamaica, ethiopia, brazil, south-africa, britain, trinidad, poland
+guide                     open the guide beside the app (or press ?)
 prompt <idea>             a prompt for any chat AI, built from your idea
 <anything else>           an idea for the composer: inspired by King Tubby, steppers at 76 bpm...
 ```

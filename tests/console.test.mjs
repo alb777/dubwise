@@ -48,6 +48,11 @@ describe("parseCommand", () => {
         ["hello there", { type: "compose", request: "hello there" }],
         ["again", { type: "again" }],
         ["undo", { type: "undo" }],
+        ["theme jamaica", { type: "theme", name: "jamaica" }],
+        ["theme South Africa", { type: "theme", name: "south-africa" }],
+        ["theme trinidad and tobago", { type: "theme", name: "trinidad" }],
+        ["guide", { type: "guide" }],
+        ["manual", { type: "guide" }],
         ["bpm 76", { type: "line", line: "bpm 76" }],
         ["kick x...x...x...x...", { type: "line", line: "kick x...x...x...x..." }],
         ["bpm 76\nkey D minor", { type: "lines", lines: ["bpm 76", "key D minor"] }],
@@ -70,6 +75,9 @@ describe("parseCommand", () => {
         ["mte bass", /did you mean "mute bass"\?/],
         ["notaion", /did you mean "notation"\?/],
         ["sol bass", /did you mean "solo bass"\?/],
+        ["theme", /themes: dub, jamaica/],
+        ["theme mars", /themes:/],
+        ["thme jamaica", /did you mean "theme jamaica"\?/],
     ];
     for (const [input, message] of errors) {
         it(`rejects ${JSON.stringify(input)}`, () => {

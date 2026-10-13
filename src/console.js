@@ -7,6 +7,17 @@ import { DRUMS, SPEC } from "../skills/dubwise/scripts/notation.mjs";
 
 export const CHANNELS = /** @type {const} */ (["kick", "rim", "hat", "bass", "skank", "siren"]);
 export const PRESETS = /** @type {const} */ (["one-drop", "rockers", "steppers"]);
+/** Colour themes and their names. Each one is a [data-theme] block in styles.css; dub is the default. */
+export const THEMES = /** @type {const} */ ({
+    dub: "dub",
+    jamaica: "Jamaica",
+    ethiopia: "Ethiopia",
+    brazil: "Brazil",
+    "south-africa": "South Africa",
+    britain: "Great Britain",
+    trinidad: "Trinidad & Tobago",
+    poland: "Poland",
+});
 const SETTINGS = new Set(["bpm", "key", "swing", "bars", "echo", "spring", "bass", "chords", ...DRUMS]);
 const COMMAND_WORDS = [
     "play",
@@ -26,6 +37,9 @@ const COMMAND_WORDS = [
     "filter",
     "preset",
     "prompt",
+    "theme",
+    "guide",
+    "manual",
 ];
 
 /** Edits between two words, a swap of neighbours counting as one, so "stpo" is one edit from "stop". */
@@ -68,6 +82,8 @@ export const COMMANDS = `commands
   show                      print the riddim as text
   share                     copy a link that plays this riddim
   prompt <idea>             copy a prompt for any chat AI, then paste its answer here
+  theme <name>              colours: ${Object.keys(THEMES).join(", ")}
+  guide                     open the guide beside the app (or press ?)
   help, notation, clear
 
 Describe a riddim in your own words and dubwise writes it, offline:
@@ -78,11 +94,13 @@ or paste a whole riddim that starts with "dubwise 1".`;
 
 /**
  * @typedef {typeof CHANNELS[number]} Channel
- * @typedef {{ type: "play" | "stop" | "show" | "share" | "help" | "notation" | "clear" | "unsolo" | "again" | "undo" }
+ * @typedef {{ type: "play" | "stop" | "show" | "share" | "help" | "notation" | "clear" | "unsolo" | "again" | "undo"
+ *     | "guide" }
  *   | { type: "mute", channel: Channel, on: boolean }
  *   | { type: "solo" | "throw", channel: Channel }
  *   | { type: "filter", value: number }
  *   | { type: "preset", name: typeof PRESETS[number] }
+ *   | { type: "theme", name: keyof typeof THEMES }
  *   | { type: "compose" | "prompt", request: string }
  *   | { type: "line", line: string }
  *   | { type: "lines", lines: string[] }
@@ -149,6 +167,18 @@ export function parseCommand(input) {
             const name = /** @type {readonly string[]} */ (PRESETS).find((p) => p === arg);
             if (!name) return error(`presets: ${PRESETS.join(", ")}`);
             return { type: "preset", name: /** @type {typeof PRESETS[number]} */ (name) };
+        }
+        case "guide":
+        case "manual":
+            return { type: "guide" };
+        case "theme": {
+            // A theme goes by its id or its name, so "theme south africa" and "theme trinidad and tobago" work.
+            const slug = (/** @type {string} */ text) => text.toLowerCase().replace(/&/g, "and").replace(/\s+/g, "-");
+            const name = /** @type {(keyof typeof THEMES)[]} */ (Object.keys(THEMES)).find(
+                (id) => id === slug(arg) || slug(THEMES[id]) === slug(arg),
+            );
+            if (!name) return error(`themes: ${Object.keys(THEMES).join(", ")}`);
+            return { type: "theme", name };
         }
         case "prompt":
             if (!arg)

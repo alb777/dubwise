@@ -12,6 +12,13 @@
         <link rel="manifest" href="manifest.webmanifest" />
         <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
         <link rel="stylesheet" href="styles.css" />
+        <script>
+            // The saved theme, set before the first paint so the page never flashes the default colours.
+            try {
+                const theme = localStorage.getItem("dubwise-theme");
+                if (theme) document.documentElement.dataset.theme = theme;
+            } catch {}
+        </script>
     </head>
     <body>
         <main>
@@ -26,6 +33,10 @@
                     <span id="keyinfo"></span>
                     <select id="preset" aria-label="Riddim preset"></select>
                     <button id="share" type="button">share</button>
+                    <select id="theme" aria-label="Colour theme"></select>
+                    <button id="guide-toggle" type="button" aria-controls="guide" aria-expanded="false" title="Open the guide (?)">
+                        <span aria-hidden="true">?</span>guide
+                    </button>
                 </div>
             </header>
 
@@ -73,6 +84,13 @@
                 <a href="https://github.com/alb777/dubwise">source</a>
             </footer>
         </main>
+        <aside id="guide" class="guide" aria-labelledby="guide-title" hidden>
+            <header>
+                <h2 id="guide-title">dub<span>wise</span> guide</h2>
+                <button id="guide-close" type="button" aria-label="Close the guide">close</button>
+            </header>
+            <ol class="guide-steps" id="guide-steps"></ol>
+        </aside>
         <script type="module" src="src/app.js"></script>
     </body>
 </html>

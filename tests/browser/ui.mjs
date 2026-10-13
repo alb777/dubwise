@@ -116,6 +116,66 @@ await withPage("/", async (page) => {
     check("the playhead moves", (await evaluate("document.querySelectorAll('.now').length")) > 0);
     await evaluate("document.getElementById('play').click()");
 
+    // The guide opens beside the app, runs real commands and points at controls.
+    const tryButton = (label) =>
+        `[...document.querySelectorAll("#guide .try")].find((b) => b.textContent === "${label}")`;
+    const guideHidden = "document.getElementById('guide').hidden";
+    await evaluate("document.getElementById('guide-toggle').click()");
+    check("the guide button opens the guide", (await evaluate(guideHidden)) === false);
+    check("the guide lists its steps", (await evaluate("document.querySelectorAll('#guide-steps li').length")) >= 6);
+    await evaluate(`${tryButton("solo bass")}.click()`);
+    check(
+        "a try button runs its command",
+        (await evaluate(`document.querySelector('.strip[data-channel="bass"] .solo').getAttribute('aria-pressed')`)) ===
+            "true",
+    );
+    await evaluate(`${tryButton("unsolo")}.click()`);
+    await evaluate(
+        `[...document.querySelectorAll("#guide li")].find((li) => li.textContent.includes("Mix like")).querySelector(".show").click()`,
+    );
+    check(
+        "show me points at the control",
+        await evaluate("document.getElementById('strips').classList.contains('spotlight')"),
+    );
+    await evaluate(`document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }))`);
+    check("Escape closes the guide", (await evaluate(guideHidden)) === true);
+    await evaluate(`document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "?", bubbles: true }))`);
+    check("? opens the guide", (await evaluate(guideHidden)) === false);
+    await evaluate("document.getElementById('guide-close').click()");
+
+    // Themes change from the console or the menu, follow the phone bar and survive a reload.
+    const theme = "document.documentElement.dataset.theme";
+    const background = "getComputedStyle(document.documentElement).getPropertyValue('--bg').trim()";
+    await evaluate(type("theme jamaica"));
+    check(
+        "a theme from the console",
+        (await evaluate(theme)) === "jamaica" && (await evaluate(background)) === "#0a0d09",
+    );
+    await evaluate(`(() => {
+        const menu = document.getElementById("theme");
+        menu.value = "brazil";
+        menu.dispatchEvent(new Event("change"));
+    })()`);
+    check("a theme from the menu", (await evaluate(theme)) === "brazil");
+    check(
+        "the phone bar follows the theme",
+        (await evaluate(`document.querySelector('meta[name="theme-color"]').content`)) === "#04122b",
+    );
+    await send("Page.reload");
+    await wait(1000);
+    check(
+        "the theme survives a reload",
+        (await evaluate(theme)) === "brazil" && (await evaluate("document.getElementById('theme').value")) === "brazil",
+    );
+    await evaluate("window.scrollTo(0, 0)");
+    for (const name of await evaluate("[...document.getElementById('theme').options].map((o) => o.value)")) {
+        await evaluate(type(`theme ${name}`));
+        await wait(100);
+        const shot = await send("Page.captureScreenshot", { format: "png" });
+        writeFileSync(join(outDir, `theme-${name}.png`), Buffer.from(shot.data, "base64"));
+    }
+    await evaluate(type("theme dub"));
+
     for (const [name, width, height, mobile] of [
         ["desktop", 1280, 1000, false],
         ["phone", 390, 844, true],
@@ -127,6 +187,13 @@ await withPage("/", async (page) => {
         check(`${name}: no sideways page scroll`, overflow <= 0, overflow);
         const shot = await send("Page.captureScreenshot", { format: "png", captureBeyondViewport: true });
         writeFileSync(join(outDir, `${name}.png`), Buffer.from(shot.data, "base64"));
+        await evaluate("document.getElementById('guide-toggle').click()");
+        await wait(300);
+        const guideOverflow = await evaluate(`document.documentElement.scrollWidth - ${width}`);
+        check(`${name}: no sideways page scroll with the guide open`, guideOverflow <= 0, guideOverflow);
+        const guideShot = await send("Page.captureScreenshot", { format: "png" });
+        writeFileSync(join(outDir, `${name}-guide.png`), Buffer.from(guideShot.data, "base64"));
+        await evaluate("document.getElementById('guide-close').click()");
     }
     check("no errors while playing", page.errors.length === 0, page.errors);
 });

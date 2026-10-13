@@ -1,15 +1,192 @@
+/*
+ * Colour themes. :root is the dub theme; each [data-theme] block sets every colour again, so a theme never
+ * inherits a colour that was checked against another background. tests/themes.test.mjs checks the contrast.
+ * accent: lit steps and the main buttons. hot: accents, mute, throws, errors. cool: solo, chords, confirmations.
+ * control-line: the border that keeps every button visible. flag: the stripe across the top.
+ */
 :root {
     --bg: #141210;
     --panel: #1e1b17;
     --panel-2: #26221d;
     --line: #3a332a;
+    --beat: #2f2a23;
+    --siren-line: #2a2520;
     --text: #efe6d6;
     --muted: #9c8f7b;
-    --gold: #f0b23b;
-    --red: #e0452b;
-    --green: #7fb069;
+    --accent: #f0b23b;
+    --on-accent: #141210;
+    --lit: #3b3324;
+    --hot: #f2603f;
+    --on-hot: #141210;
+    --cool: #7fb069;
+    --on-cool: #141210;
+    --control: #2c2721;
+    --control-line: #857459;
+    --flag: linear-gradient(90deg, #e0452b 0 33.33%, #f0b23b 0 66.66%, #7fb069 0);
     --cell: 30px;
     color-scheme: dark;
+}
+
+[data-theme="jamaica"] {
+    --bg: #0a0d09;
+    --panel: #121711;
+    --panel-2: #1a2118;
+    --line: #2c3828;
+    --beat: #222b20;
+    --siren-line: #20281d;
+    --text: #f4f2e4;
+    --muted: #a2ab93;
+    --accent: #fed100;
+    --on-accent: #0a0d09;
+    --lit: #373412;
+    --hot: #ff7a45;
+    --on-hot: #0a0d09;
+    --cool: #34c463;
+    --on-cool: #0a0d09;
+    --control: #1f281d;
+    --control-line: #5f7055;
+    --flag: linear-gradient(90deg, #009b3a 0 30%, #fed100 0 40%, #000000 0 60%, #fed100 0 70%, #009b3a 0);
+    color-scheme: dark;
+}
+
+[data-theme="ethiopia"] {
+    --bg: #0d0b08;
+    --panel: #17140e;
+    --panel-2: #201c14;
+    --line: #3a3324;
+    --beat: #29241a;
+    --siren-line: #262116;
+    --text: #f6f0dc;
+    --muted: #ab9f80;
+    --accent: #fcdd09;
+    --on-accent: #0d0b08;
+    --lit: #3a3412;
+    --hot: #ff5c5c;
+    --on-hot: #0d0b08;
+    --cool: #3cbf63;
+    --on-cool: #0d0b08;
+    --control: #272218;
+    --control-line: #7d7050;
+    --flag: linear-gradient(90deg, #078930 0 33.33%, #fcdd09 0 66.66%, #da121a 0);
+    color-scheme: dark;
+}
+
+[data-theme="brazil"] {
+    --bg: #04122b;
+    --panel: #0a1c3b;
+    --panel-2: #10264b;
+    --line: #22406e;
+    --beat: #163059;
+    --siren-line: #142b52;
+    --text: #eef3ff;
+    --muted: #a3b5d6;
+    --accent: #ffdf00;
+    --on-accent: #04122b;
+    --lit: #2c3a2e;
+    --hot: #ff7b6b;
+    --on-hot: #04122b;
+    --cool: #2fd06e;
+    --on-cool: #04122b;
+    --control: #142d57;
+    --control-line: #5a7ab2;
+    --flag: linear-gradient(90deg, #009c3b 0 25%, #ffdf00 0 40%, #002776 0 60%, #ffdf00 0 75%, #009c3b 0);
+    color-scheme: dark;
+}
+
+[data-theme="south-africa"] {
+    --bg: #0a0a0a;
+    --panel: #141414;
+    --panel-2: #1d1d1d;
+    --line: #333333;
+    --beat: #262626;
+    --siren-line: #232323;
+    --text: #f4f4f4;
+    --muted: #a8a8a8;
+    --accent: #ffb81c;
+    --on-accent: #0a0a0a;
+    --lit: #3a2e12;
+    --hot: #ff6155;
+    --on-hot: #0a0a0a;
+    --cool: #25c47c;
+    --on-cool: #0a0a0a;
+    --control: #242424;
+    --control-line: #727272;
+    --flag: linear-gradient(
+        90deg,
+        #e03c31 0 22%,
+        #ffffff 0 26%,
+        #007749 0 48%,
+        #ffb81c 0 52%,
+        #000000 0 74%,
+        #001489 0
+    );
+    color-scheme: dark;
+}
+
+[data-theme="britain"] {
+    --bg: #050b1f;
+    --panel: #0b1530;
+    --panel-2: #121e40;
+    --line: #24376b;
+    --beat: #1a2850;
+    --siren-line: #18264b;
+    --text: #e3e8f5;
+    --muted: #a3aecb;
+    --accent: #ffffff;
+    --on-accent: #0b1530;
+    --lit: #26335a;
+    --hot: #ff5466;
+    --on-hot: #050b1f;
+    --cool: #8cb8ff;
+    --on-cool: #050b1f;
+    --control: #17254d;
+    --control-line: #5a6fa6;
+    --flag: linear-gradient(90deg, #012169 0 30%, #ffffff 0 36%, #c8102e 0 64%, #ffffff 0 70%, #012169 0);
+    color-scheme: dark;
+}
+
+[data-theme="trinidad"] {
+    --bg: #140406;
+    --panel: #1f080c;
+    --panel-2: #2a0d12;
+    --line: #4a1d25;
+    --beat: #36141a;
+    --siren-line: #321218;
+    --text: #f6eded;
+    --muted: #c2a3a7;
+    --accent: #ffffff;
+    --on-accent: #1f080c;
+    --lit: #3d1a20;
+    --hot: #ff6b81;
+    --on-hot: #140406;
+    --cool: #5ee0c6;
+    --on-cool: #140406;
+    --control: #33121a;
+    --control-line: #a35d69;
+    --flag: linear-gradient(90deg, #da1a35 0 30%, #ffffff 0 34%, #000000 0 66%, #ffffff 0 70%, #da1a35 0);
+    color-scheme: dark;
+}
+
+[data-theme="poland"] {
+    --bg: #f3efec;
+    --panel: #ffffff;
+    --panel-2: #f1ebe7;
+    --line: #ddd3ce;
+    --beat: #e6ddd8;
+    --siren-line: #e2d8d3;
+    --text: #1c1616;
+    --muted: #665a57;
+    --accent: #c8102e;
+    --on-accent: #ffffff;
+    --lit: #fbe3e7;
+    --hot: #a14000;
+    --on-hot: #ffffff;
+    --cool: #13753a;
+    --on-cool: #ffffff;
+    --control: #ffffff;
+    --control-line: #8c7f7a;
+    --flag: linear-gradient(#ffffff 0 50%, #dc143c 0);
+    color-scheme: light;
 }
 
 * {
@@ -22,6 +199,14 @@ body {
     background: var(--bg);
     color: var(--text);
     font: 14px/1.4 ui-monospace, "JetBrains Mono", "DejaVu Sans Mono", Menlo, monospace;
+}
+
+/* the flag of the theme, across the top */
+body::before {
+    content: "";
+    display: block;
+    height: 6px;
+    background: var(--flag);
 }
 
 main > * {
@@ -46,8 +231,8 @@ textarea {
 
 button,
 select {
-    background: var(--panel-2);
-    border: 1px solid var(--line);
+    background: var(--control);
+    border: 1px solid var(--control-line);
     border-radius: 6px;
     padding: 6px 12px;
     cursor: pointer;
@@ -56,22 +241,34 @@ select {
 }
 
 button:hover {
-    border-color: var(--muted);
+    border-color: var(--text);
 }
 
 button:focus-visible,
 select:focus-visible,
 input:focus-visible,
 textarea:focus-visible {
-    outline: 2px solid var(--gold);
+    outline: 2px solid var(--accent);
     outline-offset: 1px;
 }
 
 .panel {
+    position: relative;
     background: var(--panel);
     border: 1px solid var(--line);
     border-radius: 10px;
     padding: 12px;
+}
+
+/* every panel wears the flag along its top edge */
+.panel::before {
+    content: "";
+    position: absolute;
+    inset: -1px -1px auto;
+    height: 4px;
+    border-radius: 10px 10px 0 0;
+    background: var(--flag);
+    pointer-events: none;
 }
 
 /* top bar */
@@ -96,7 +293,7 @@ textarea:focus-visible {
 }
 
 .brand h1 span {
-    color: var(--gold);
+    color: var(--accent);
 }
 
 .brand small {
@@ -113,13 +310,13 @@ textarea:focus-visible {
 #play {
     min-width: 92px;
     font-weight: bold;
-    border-color: var(--gold);
-    color: var(--gold);
+    border-color: var(--accent);
+    color: var(--accent);
 }
 
 #play[aria-pressed="true"] {
-    background: var(--gold);
-    color: var(--bg);
+    background: var(--accent);
+    color: var(--on-accent);
 }
 
 .field {
@@ -156,8 +353,8 @@ textarea:focus-visible {
 }
 
 .bars button[aria-selected="true"] {
-    border-color: var(--gold);
-    color: var(--gold);
+    border-color: var(--accent);
+    color: var(--accent);
 }
 
 .bars label {
@@ -191,7 +388,7 @@ textarea:focus-visible {
 }
 
 .row-name:hover {
-    color: var(--gold);
+    color: var(--accent);
 }
 
 .cell {
@@ -202,22 +399,22 @@ textarea:focus-visible {
 }
 
 .cell.beat {
-    background: #2f2a23;
+    background: var(--beat);
 }
 
 .cell[data-value="1"] {
-    background: var(--gold);
-    border-color: var(--gold);
+    background: var(--accent);
+    border-color: var(--accent);
 }
 
 .cell[data-value="2"] {
-    background: var(--red);
-    border-color: var(--red);
+    background: var(--hot);
+    border-color: var(--hot);
 }
 
 .cell[data-value="3"] {
     background: none;
-    border: 3px solid var(--gold);
+    border: 3px solid var(--accent);
 }
 
 .note {
@@ -231,8 +428,8 @@ textarea:focus-visible {
 }
 
 .note.on {
-    background: #3b3324;
-    color: var(--gold);
+    background: var(--lit);
+    color: var(--accent);
 }
 
 .chord {
@@ -241,12 +438,12 @@ textarea:focus-visible {
     height: 24px;
     border-radius: 4px;
     background: var(--panel-2);
-    color: var(--green);
+    color: var(--cool);
     font-size: 12px;
 }
 
 .now {
-    box-shadow: inset 0 -3px 0 var(--gold);
+    box-shadow: inset 0 -3px 0 var(--accent);
 }
 
 .cell.now {
@@ -291,21 +488,34 @@ textarea:focus-visible {
     padding: 4px 6px;
 }
 
+.strip .mute {
+    border-color: var(--hot);
+}
+
+.strip .solo {
+    border-color: var(--cool);
+}
+
+.strip .throw {
+    border-color: var(--accent);
+}
+
 .strip .mute[aria-pressed="true"] {
-    background: var(--red);
-    border-color: var(--red);
+    background: var(--hot);
+    border-color: var(--hot);
+    color: var(--on-hot);
 }
 
 .strip .solo[aria-pressed="true"] {
-    background: var(--green);
-    border-color: var(--green);
-    color: var(--bg);
+    background: var(--cool);
+    border-color: var(--cool);
+    color: var(--on-cool);
 }
 
 .held {
-    background: var(--red) !important;
-    border-color: var(--red) !important;
-    color: #fff !important;
+    background: var(--hot) !important;
+    border-color: var(--hot) !important;
+    color: var(--on-hot) !important;
 }
 
 .fx {
@@ -328,7 +538,7 @@ textarea:focus-visible {
 
 input[type="range"],
 input[type="checkbox"] {
-    accent-color: var(--gold);
+    accent-color: var(--accent);
 }
 
 input[type="range"] {
@@ -339,7 +549,7 @@ input[type="range"] {
     position: relative;
     height: 120px;
     border-radius: 8px;
-    background: repeating-linear-gradient(90deg, var(--panel-2) 0 24px, #2a2520 24px 25px);
+    background: repeating-linear-gradient(90deg, var(--panel-2) 0 24px, var(--siren-line) 24px 25px);
     border: 1px solid var(--line);
     touch-action: none;
     cursor: crosshair;
@@ -350,8 +560,8 @@ input[type="range"] {
 }
 
 .siren.held {
-    border-color: var(--red);
-    color: #fff;
+    border-color: var(--hot);
+    color: var(--text);
 }
 
 .siren .dot {
@@ -360,7 +570,7 @@ input[type="range"] {
     height: 18px;
     margin: -9px 0 0 -9px;
     border-radius: 50%;
-    background: var(--red);
+    background: var(--hot);
     pointer-events: none;
     display: none;
 }
@@ -384,15 +594,15 @@ input[type="range"] {
 }
 
 .log .in {
-    color: var(--gold);
+    color: var(--accent);
 }
 
 .log .err {
-    color: var(--red);
+    color: var(--hot);
 }
 
 .log .ok {
-    color: var(--green);
+    color: var(--cool);
 }
 
 .log .dim {
@@ -410,7 +620,7 @@ input[type="range"] {
 }
 
 .prompt span {
-    color: var(--gold);
+    color: var(--accent);
     padding-top: 2px;
 }
 
@@ -434,6 +644,171 @@ footer a {
     color: var(--muted);
 }
 
+/* guide: a panel beside the app that explains it and runs real commands */
+#guide-toggle {
+    border-color: var(--accent);
+}
+
+#guide-toggle span {
+    display: inline-grid;
+    place-items: center;
+    width: 18px;
+    height: 18px;
+    margin-right: 4px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: var(--on-accent);
+    font-weight: bold;
+    font-size: 12px;
+}
+
+#guide-toggle[aria-expanded="true"] {
+    background: var(--accent);
+    color: var(--on-accent);
+}
+
+.guide {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 10;
+    width: 400px;
+    display: flex;
+    flex-direction: column;
+    background: var(--panel);
+    border-left: 1px solid var(--line);
+    box-shadow: -12px 0 32px rgb(0 0 0 / 0.35);
+}
+
+.guide[hidden] {
+    display: none;
+}
+
+.guide::before {
+    content: "";
+    height: 6px;
+    flex: none;
+    background: var(--flag);
+}
+
+.guide > header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--line);
+}
+
+.guide h2 {
+    margin: 0 auto 0 0;
+    font-size: 16px;
+    letter-spacing: 0.12em;
+}
+
+.guide h2 span {
+    color: var(--accent);
+}
+
+.guide-steps {
+    margin: 0;
+    padding: 14px 16px 24px;
+    overflow-y: auto;
+    list-style: none;
+    counter-reset: step;
+    display: grid;
+    align-content: start;
+    gap: 10px;
+}
+
+.guide-steps li {
+    counter-increment: step;
+    padding: 12px;
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+}
+
+.guide-steps h3 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 6px;
+    font-size: 14px;
+}
+
+.guide-steps h3::before {
+    content: counter(step);
+    display: inline-grid;
+    place-items: center;
+    flex: none;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: var(--on-accent);
+    font-size: 12px;
+}
+
+.guide-steps p {
+    margin: 0;
+    color: var(--muted);
+}
+
+.guide-steps code {
+    color: var(--text);
+}
+
+.guide-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+}
+
+.guide-actions button {
+    padding: 4px 10px;
+    font-size: 13px;
+}
+
+.guide-actions .try {
+    border-color: var(--accent);
+}
+
+.guide-actions .try::before {
+    content: "▶ ";
+    color: var(--accent);
+}
+
+.guide-actions .show {
+    border-style: dashed;
+}
+
+.spotlight {
+    outline: 3px solid var(--accent);
+    outline-offset: 4px;
+    animation: spotlight 0.5s ease-in-out 4 alternate;
+}
+
+@keyframes spotlight {
+    from {
+        outline-color: transparent;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .spotlight {
+        animation: none;
+    }
+}
+
+/* with the guide open, a wide screen makes room for it instead of covering the app */
+@media (min-width: 1180px) {
+    body.guide-open {
+        padding-right: 400px;
+    }
+}
+
 @media (max-width: 760px) {
     :root {
         --cell: 26px;
@@ -450,5 +825,20 @@ footer a {
     }
     .fx label {
         grid-template-columns: 90px 1fr 60px;
+    }
+    /* the guide becomes a sheet over the lower part of the screen, and the page can scroll above it */
+    .guide {
+        top: auto;
+        left: 0;
+        width: auto;
+        height: 60vh;
+        border-left: none;
+        border-top: 1px solid var(--line);
+        border-radius: 14px 14px 0 0;
+        overflow: hidden;
+        box-shadow: 0 -12px 32px rgb(0 0 0 / 0.35);
+    }
+    body.guide-open {
+        padding-bottom: 60vh;
     }
 }

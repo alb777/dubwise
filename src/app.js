@@ -1,6 +1,6 @@
 // @ts-check
 /**
- * The dubwise page: step grid, channel strips, effects, siren pad and the console.
+ * The dubwise page: step grid, channel strips, effects, siren pad, the console, colour themes and the guide.
  * Every change, from a grid click, a slider or a console line, goes through commit(),
  * which updates the engine, the shareable URL and the screen together.
  */
@@ -19,8 +19,9 @@ import {
     stepAt,
     toHash,
 } from "../skills/dubwise/scripts/notation.mjs";
-import { aiPrompt, CHANNELS, COMMANDS, PRESETS, parseCommand } from "./console.js";
+import { aiPrompt, CHANNELS, COMMANDS, PRESETS, parseCommand, THEMES } from "./console.js";
 import { createEngine } from "./engine.js";
+import { GUIDE } from "./guide.js";
 import { applyRiddim, createSequencer } from "./sequencer.js";
 
 /** @typedef {import("../skills/dubwise/scripts/notation.mjs").Riddim} Riddim */
@@ -30,6 +31,7 @@ import { applyRiddim, createSequencer } from "./sequencer.js";
 
 const FROM_LINK = "from-link";
 const CUSTOM = "custom";
+const THEME_KEY = "dubwise-theme";
 
 /**
  * @template {HTMLElement} T
@@ -56,6 +58,11 @@ const ui = {
     log: byId("log"),
     prompt: /** @type {HTMLFormElement} */ (byId("prompt")),
     command: /** @type {HTMLTextAreaElement} */ (byId("command")),
+    theme: /** @type {HTMLSelectElement} */ (byId("theme")),
+    guide: byId("guide"),
+    guideToggle: byId("guide-toggle"),
+    guideClose: byId("guide-close"),
+    guideSteps: byId("guide-steps"),
 };
 
 const state = {
@@ -422,6 +429,92 @@ function setSolo(channel) {
     applyMix();
 }
 
+// ----- theme and guide
+
+/** @param {string | undefined} name @returns {name is keyof typeof THEMES} */
+function isTheme(name) {
+    return name !== undefined && Object.hasOwn(THEMES, name);
+}
+
+/** @param {keyof typeof THEMES} name @param {boolean} [save] */
+function setTheme(name, save = true) {
+    document.documentElement.dataset.theme = name;
+    ui.theme.value = name;
+    // The browser bar on phones follows the page background.
+    const background = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim();
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", background);
+    if (!save) return;
+    try {
+        localStorage.setItem(THEME_KEY, name);
+    } catch {
+        // Storage can be blocked, as in some private windows; the theme still applies to this visit.
+    }
+}
+
+/** Text with the words in backticks shown as code. @param {string} text */
+function withCode(text) {
+    return text.split("`").map((part, i) => {
+        if (i % 2 === 0) return part;
+        const code = document.createElement("code");
+        code.textContent = part;
+        return code;
+    });
+}
+
+/** Scroll a control into view and make it pulse. @param {string} selector */
+function spotlight(selector) {
+    const target = /** @type {HTMLElement | null} */ (document.querySelector(selector));
+    if (!target) return;
+    const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    target.scrollIntoView({ behavior: still ? "auto" : "smooth", block: "start" });
+    target.classList.remove("spotlight");
+    void target.offsetWidth; // restarts the pulse when the same control is shown twice in a row
+    target.classList.add("spotlight");
+    setTimeout(() => target.classList.remove("spotlight"), 2000);
+}
+
+function buildGuide() {
+    for (const step of GUIDE) {
+        const item = document.createElement("li");
+        const title = document.createElement("h3");
+        title.textContent = step.title;
+        const text = document.createElement("p");
+        text.append(...withCode(step.text));
+        const actions = document.createElement("div");
+        actions.className = "guide-actions";
+        for (const command of step.try ?? []) {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "try";
+            button.textContent = command;
+            button.title = `run "${command}" in the console`;
+            button.addEventListener("click", () => execute(command));
+            actions.append(button);
+        }
+        const { show } = step;
+        if (show) {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "show";
+            button.textContent = "show me";
+            button.addEventListener("click", () => spotlight(show));
+            actions.append(button);
+        }
+        item.append(title, text, actions);
+        ui.guideSteps.append(item);
+    }
+}
+
+const guideOpen = () => !ui.guide.hidden;
+
+/** @param {boolean} open @param {boolean} [focus] move the keyboard focus into the guide or back to its button */
+function showGuide(open, focus = false) {
+    ui.guide.hidden = !open;
+    document.body.classList.toggle("guide-open", open);
+    ui.guideToggle.setAttribute("aria-expanded", String(open));
+    if (focus) (open ? ui.guideClose : ui.guideToggle).focus();
+}
+
 // ----- console
 
 /** @param {string} text @param {"in" | "out" | "err" | "ok" | "dim"} [kind] */
@@ -510,6 +603,12 @@ function execute(input) {
             return;
         case "help":
             return print(COMMANDS, "dim");
+        case "guide":
+            showGuide(true);
+            return print("the guide is open beside the app, Esc closes it", "dim");
+        case "theme":
+            setTheme(command.name);
+            return print(`theme ${THEMES[command.name]}`, "ok");
         case "notation":
             return print(SPEC, "dim");
         case "clear":
@@ -549,6 +648,15 @@ function execute(input) {
 // ----- wiring
 
 buildStrips();
+buildGuide();
+for (const [id, name] of Object.entries(THEMES)) ui.theme.add(new Option(name, id));
+const savedTheme = document.documentElement.dataset.theme;
+setTheme(isTheme(savedTheme) ? savedTheme : "dub", false);
+ui.theme.addEventListener("change", () => {
+    if (isTheme(ui.theme.value)) setTheme(ui.theme.value);
+});
+ui.guideToggle.addEventListener("click", () => showGuide(!guideOpen(), true));
+ui.guideClose.addEventListener("click", () => showGuide(false, true));
 for (const name of PRESETS) ui.preset.add(new Option(name.replace("-", " "), name));
 ui.preset.addEventListener("change", () => {
     if (ui.preset.value !== FROM_LINK && ui.preset.value !== CUSTOM) void loadPreset(ui.preset.value);
@@ -647,9 +755,16 @@ ui.command.addEventListener("keydown", (event) => {
 ui.prompt.addEventListener("submit", (event) => event.preventDefault());
 
 document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && guideOpen()) {
+        showGuide(false, ui.guide.contains(document.activeElement));
+        return;
+    }
     const typing = event.target instanceof HTMLElement && /^(INPUT|TEXTAREA|SELECT)$/.test(event.target.tagName);
     if (typing) return;
-    if (event.code === "Space") {
+    if (event.key === "?") {
+        event.preventDefault();
+        showGuide(!guideOpen(), true);
+    } else if (event.code === "Space") {
         event.preventDefault();
         togglePlay();
     } else if (event.key === "/") {
@@ -660,7 +775,10 @@ document.addEventListener("keydown", (event) => {
 
 window.addEventListener("hashchange", () => loadFromLink());
 if (!loadFromLink()) void loadPreset(PRESETS[0]);
-print("dubwise is ready. Press play, click steps to edit, or describe a riddim: inspired by Augustus Pablo", "dim");
+print(
+    "dubwise is ready. Press play, click steps to edit, describe a riddim (inspired by Augustus Pablo) or press ? for the guide",
+    "dim",
+);
 requestAnimationFrame(animate);
 
 if ("serviceWorker" in navigator && location.protocol === "https:") {
