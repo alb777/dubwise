@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
 
 import { READING_SCHEMA } from "../skills/dubwise/scripts/intent.mjs";
-import { asError, onLiveGpu, readWithEndpoint, WEBLLM_URL } from "../src/ai.js";
+import { asError, onLiveGpu, readWithEndpoint, WEBLLM_URL, webgpuProblem } from "../src/ai.js";
 
 const ANSWER = {
     reading: "spy film: tense, dark",
@@ -115,7 +115,7 @@ describe("a lost GPU", () => {
     it("loads the model again and retries once", async () => {
         let resets = 0;
         const { attempt, calls } = flaky("OperationError: A valid external Instance reference no longer exists.");
-        assert.equal(await onLiveGpu(attempt, () => resets++), "reading");
+        assert.equal(await onLiveGpu(attempt, () => ++resets > 0), "reading");
         assert.equal(resets, 1);
         assert.equal(calls(), 2);
     });
@@ -123,16 +123,25 @@ describe("a lost GPU", () => {
     it("says what to do when the GPU goes twice", async () => {
         const { attempt } = flaky(new Error("Device was lost"), new Error("GPU device lost"));
         await assert.rejects(
-            onLiveGpu(attempt, () => {}),
-            /dropped the model twice; restart the browser/,
+            onLiveGpu(attempt, () => true),
+            /dropped the model; restart the browser/,
         );
+    });
+
+    it("gives up at once when the visit already used its retry", async () => {
+        const { attempt, calls } = flaky(new Error("Device was lost"));
+        await assert.rejects(
+            onLiveGpu(attempt, () => false),
+            /dropped the model; restart the browser/,
+        );
+        assert.equal(calls(), 1);
     });
 
     it("does not retry other failures", async () => {
         let resets = 0;
         const { attempt, calls } = flaky(new Error("the answer did not fit the form"));
         await assert.rejects(
-            onLiveGpu(attempt, () => resets++),
+            onLiveGpu(attempt, () => ++resets > 0),
             /did not fit the form/,
         );
         assert.equal(resets, 0);
@@ -141,6 +150,15 @@ describe("a lost GPU", () => {
 });
 
 describe("the in-browser model", () => {
+    it("explains what keeps it from running", () => {
+        assert.match(webgpuProblem({ gpu: false, software: true }), /runs on the processor.*#enable-vulkan/);
+        assert.match(
+            webgpuProblem({ gpu: false, software: false }),
+            /no WebGPU.*#enable-unsafe-webgpu and #enable-vulkan/,
+        );
+        assert.equal(webgpuProblem({ gpu: true, software: false }), "");
+    });
+
     it("is cached by the service worker under the same pinned URL", () => {
         const sw = readFileSync(join(import.meta.dirname, "..", "sw.js"), "utf8");
         assert.ok(sw.includes(`const WEBLLM_URL = "${WEBLLM_URL}";`), "sw.js and src/ai.js pin different builds");

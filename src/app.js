@@ -31,6 +31,7 @@ import {
     readIdea,
     saveKey,
     saveSettings,
+    webgpuProblem,
     webgpuSupport,
 } from "./ai.js";
 import { aiPrompt, CHANNELS, COMMANDS, PRESETS, parseCommand, THEMES } from "./console.js";
@@ -698,11 +699,8 @@ async function describeProvider() {
     const settings = formSettings();
     if (settings.provider === "browser") {
         const model = BROWSER_MODELS[settings.size];
-        if (!(await webgpuSupport()).gpu)
-            return aiStatus(
-                "This browser has no WebGPU. In Chrome or Brave on Linux, turn on chrome://flags/#enable-unsafe-webgpu, or pick a server instead.",
-                "err",
-            );
+        const problem = webgpuProblem(await webgpuSupport());
+        if (problem) return aiStatus(`${problem[0].toUpperCase()}${problem.slice(1)}.`, "err");
         return aiStatus(
             (await browserModelCached(settings.size))
                 ? `${model.name} is downloaded and ready.`

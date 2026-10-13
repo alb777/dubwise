@@ -178,11 +178,26 @@ async function readWithChrome(idea, signal, onProgress) {
 /** @type {{ size: ModelSize, engine: Promise<any>, stop: () => void } | null} */
 let browserModel = null;
 
-/** Whether WebGPU is here, and whether it offers 16-bit floats. @returns {Promise<{ gpu: boolean, f16: boolean }>} */
+/**
+ * Whether WebGPU runs on a graphics card here, and whether it offers 16-bit floats. `software` means it only runs on
+ * the processor, as Chrome and Brave on Linux do with #enable-unsafe-webgpu but without Vulkan: far too slow for the
+ * model, and the browser's GPU watchdog kills it.
+ * @returns {Promise<{ gpu: boolean, f16: boolean, software: boolean }>}
+ */
 export async function webgpuSupport() {
     const gpu = /** @type {any} */ (navigator).gpu;
     const adapter = gpu ? await gpu.requestAdapter({ powerPreference: "high-performance" }).catch(() => null) : null;
-    return { gpu: Boolean(adapter), f16: Boolean(adapter?.features.has("shader-f16")) };
+    const software = Boolean(adapter?.info?.isFallbackAdapter ?? adapter?.isFallbackAdapter);
+    return { gpu: Boolean(adapter) && !software, f16: Boolean(adapter?.features.has("shader-f16")), software };
+}
+
+/** What stops the in-browser model from running here, or "" when nothing does. @param {{ gpu: boolean, software: boolean }} support */
+export function webgpuProblem({ gpu, software }) {
+    if (software)
+        return "WebGPU here runs on the processor, not the graphics card, far too slow for the model; in Chrome or Brave on Linux turn on chrome://flags/#enable-vulkan too, or pick a server";
+    if (!gpu)
+        return "this browser has no WebGPU; in Chrome or Brave on Linux turn on chrome://flags/#enable-unsafe-webgpu and #enable-vulkan, or pick a server";
+    return "";
 }
 
 /**
@@ -194,8 +209,10 @@ export function loadBrowserModel(size, onProgress) {
     /** @type {Worker | undefined} */
     let worker;
     const engine = (async () => {
-        const { gpu, f16 } = await webgpuSupport();
-        if (!gpu) throw new Error("this browser has no WebGPU");
+        const support = await webgpuSupport();
+        const problem = webgpuProblem(support);
+        if (problem) throw new Error(problem);
+        const { f16 } = support;
         const webllm = await import(WEBLLM_URL);
         worker = new Worker(new URL("./ai-worker.js", import.meta.url), { type: "module" });
         const id = f16 ? BROWSER_MODELS[size].f16 : BROWSER_MODELS[size].f32;
@@ -226,10 +243,14 @@ export function loadBrowserModel(size, onProgress) {
     return engine;
 }
 
-/** Let go of the loaded model and its worker, as when the GPU that held them is gone. */
+/** Chrome turns the GPU off for good after a few crashes in a short time, so a lost GPU is tried again once a visit. */
+let gpuRetries = 1;
+
+/** Let go of the loaded model and its worker, as when the GPU that held them is gone; say whether to try again. */
 function dropBrowserModel() {
     browserModel?.stop();
     browserModel = null;
+    return gpuRetries-- > 0;
 }
 
 /** What browsers say when the GPU, and every model on it, is gone. */
@@ -237,23 +258,24 @@ const LOST_GPU = /instance reference no longer exists|device (was |is )?lost|dev
 
 /**
  * Run a request on the in-browser model. If the GPU was lost on the way, as when the browser restarts its graphics
- * process, start again from the cache with `reset` and try once more.
- * @template T @param {() => Promise<T>} attempt @param {() => void} reset @returns {Promise<T>}
+ * process, `reset` starts again from the cache and says whether one more try is allowed.
+ * @template T @param {() => Promise<T>} attempt @param {() => boolean} reset @returns {Promise<T>}
  */
 export async function onLiveGpu(attempt, reset) {
+    const lost = new Error(
+        "the graphics card dropped the model; restart the browser, try the lighter model or pick a server",
+    );
     try {
         return await attempt();
     } catch (error) {
         if (!LOST_GPU.test(String(error))) throw error;
-        reset();
+        if (!reset()) throw lost;
     }
     try {
         return await attempt();
     } catch (error) {
         if (!LOST_GPU.test(String(error))) throw error;
-        throw new Error(
-            "the graphics card dropped the model twice; restart the browser, try the lighter model or pick a server",
-        );
+        throw lost;
     }
 }
 
