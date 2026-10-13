@@ -50,6 +50,10 @@ describe("reading an idea", () => {
         assert.equal(readIntent("alegre e ensolarado").mode, "major");
         assert.equal(readIntent("muito eco").echo, "high");
         assert.equal(readIntent("seco, sem eco").echo, "low");
+        assert.equal(readIntent("less echo").echo, "low");
+        assert.equal(readIntent("faster").tempo, "fast");
+        assert.equal(readIntent("darker and slower").mode, "minor");
+        assert.deepEqual(readIntent("something heavy rim but slow bpm").unknown, ["rim"]);
         assert.equal(readIntent("minimalista").density, "sparse");
         assert.equal(readIntent("baixo melódico").bass, "melodic");
     });

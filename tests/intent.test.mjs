@@ -68,6 +68,15 @@ describe("reading a model's answer", () => {
         assert.equal(reading?.reading?.length, 100);
     });
 
+    it("keeps each word of a looping reading once", () => {
+        const looping = "hip hop: gritty, gritty, gritty, gritty, gritty, gritty, gritty, 2p,";
+        assert.equal(sanitizeReading({ reading: looping })?.reading, "hip hop: gritty");
+        assert.equal(
+            sanitizeReading({ reading: "high bass: powerful, commanding, powerful" })?.reading,
+            "high bass: powerful, commanding",
+        );
+    });
+
     it("returns nothing for answers it cannot use", () => {
         for (const answer of ["", "no", "{broken", null, 42, [], { style: "polka" }]) {
             assert.equal(sanitizeReading(answer), null, JSON.stringify(answer));

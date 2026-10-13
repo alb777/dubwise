@@ -108,9 +108,19 @@ export function sanitizeReading(answer) {
         if (typeof choice === "string" && allowed.includes(choice)) reading[field] = choice;
     }
     if (typeof raw.reading === "string") {
+        // Small models can loop ("gritty, gritty, gritty"), so each word or phrase is kept once.
+        const seen = new Set();
         const words = raw.reading
             .replace(/[\p{Cc}\s]+/gu, " ")
-            .trim()
+            .split(",")
+            .map((item) => item.trim())
+            .filter((item) => {
+                const key = item.replace(/^[^:]*:\s*/, "").toLowerCase();
+                if (key.length < 3 || seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            })
+            .join(", ")
             .slice(0, 100);
         if (words) reading.reading = words;
     }

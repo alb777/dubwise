@@ -52,6 +52,7 @@ describe("parseCommand", () => {
         ["theme South Africa", { type: "theme", name: "south-africa" }],
         ["theme trinidad and tobago", { type: "theme", name: "trinidad" }],
         ["guide", { type: "guide" }],
+        ["faster", { type: "compose", request: "faster" }],
         ["ai", { type: "ai" }],
         ["ai off", { type: "ai-off" }],
         ["ai Martin Campbell style", { type: "compose", request: "Martin Campbell style", ai: true }],
