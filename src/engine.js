@@ -245,9 +245,11 @@ export function createEngine(context, { seed = 7 } = {}) {
 
     /** Hi-hat; a closed hat chokes a ringing open one. @param {number} time @param {number} velocity @param {boolean} open */
     function hat(time, velocity, open) {
+        // The choke fades a gain of its own, so the open hat keeps decaying until the moment it is cut.
+        // The setValueAtTime anchor is redundant by the spec, but node-web-audio-api blows the gain up without it.
         if (openHat) {
-            openHat.gain.cancelScheduledValues(time);
-            openHat.gain.setTargetAtTime(0.0001, time, 0.01);
+            openHat.gain.setValueAtTime(1, time);
+            openHat.gain.setTargetAtTime(0, time, 0.01);
             openHat = null;
         }
         const decay = open ? 0.3 : 0.05;
@@ -255,8 +257,9 @@ export function createEngine(context, { seed = 7 } = {}) {
         high.type = "highpass";
         high.frequency.value = 7000;
         const amp = envelope(time, velocity * 0.6, decay);
-        noiseSource(time, decay).connect(high).connect(amp).connect(channels.hat.input);
-        if (open) openHat = amp;
+        const choke = context.createGain();
+        noiseSource(time, decay).connect(high).connect(amp).connect(choke).connect(channels.hat.input);
+        if (open) openHat = choke;
     }
 
     /** @type {GainNode | null} */

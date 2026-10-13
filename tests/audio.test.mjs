@@ -151,6 +151,22 @@ describe("audio", () => {
         assert.ok(open - closed > 20, `filter cut ${(open - closed).toFixed(1)} dB`);
     });
 
+    it("chokes an open hat with the next hat, and only then", async () => {
+        const hats = (line) =>
+            render(riddimOf(`dubwise 1\nbpm 120\nhat    ${line}\necho 1/4 0\nspring 0\n`), {
+                seconds: 0.4,
+                playSteps: 2,
+                configure: soloing("hat"),
+            });
+        // Rendering starts at 0.05 s, so the closed hat lands at 0.175 s and is over by 0.24 s.
+        const ringing = await hats("o...............");
+        const choked = await hats("ox..............");
+        const before = measure(choked, 0.05, 0.17).db - measure(ringing, 0.05, 0.17).db;
+        assert.ok(Math.abs(before) < 0.1, `the open hat is ${before.toFixed(1)} dB off before the choke`);
+        const cut = measure(ringing, 0.24, 0.35).db - measure(choked, 0.24, 0.35).db;
+        assert.ok(cut > 15, `choke cut ${cut.toFixed(1)} dB`);
+    });
+
     it("sounds the siren only while it is held", async () => {
         const silent = riddimOf("dubwise 1\necho 1/4 0\n");
         const buffer = await render(silent, {
