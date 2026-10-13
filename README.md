@@ -6,7 +6,7 @@ A dub sound system in your browser. Describe a riddim in your own words and it p
 
 [![An idea typed into the console becomes a riddim](docs/demo.gif)](https://alb777.github.io/dubwise/docs/demo.mp4)
 
-**[Watch the 1 minute demo with sound](https://alb777.github.io/dubwise/docs/demo.mp4)**: one drop, an idea typed in Portuguese turning into a riddim, echo throws, the siren, a bass drop-out and a steppers. Recorded from the real app, sound included.
+**[Watch the 1 minute demo with sound](https://alb777.github.io/dubwise/docs/demo.mp4)**: one drop, a typed idea turning into a riddim, echo throws, the siren, a bass drop-out and a steppers. Recorded from the real app, sound included.
 
 ## What you can do
 

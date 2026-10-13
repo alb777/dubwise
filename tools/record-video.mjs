@@ -143,7 +143,7 @@ await withPage(
         await wait(2500);
         await sweep(-0.85);
         await wait(1500);
-        await type("crie um riddim inspirado em augustus pablo");
+        await type("make a riddim inspired by Augustus Pablo");
         await wait(5000);
         await hold('.strip[data-channel="skank"] .throw', 500);
         await wait(2500);
