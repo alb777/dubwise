@@ -1,8 +1,11 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, it } from "node:test";
 
 import { compose } from "../skills/dubwise/scripts/composer.mjs";
-import { READING_SCHEMA, readingMessages, sanitizeReading } from "../skills/dubwise/scripts/intent.mjs";
+import { groundReading, READING_SCHEMA, readingMessages, sanitizeReading } from "../skills/dubwise/scripts/intent.mjs";
+import { parseLexicon } from "../skills/dubwise/scripts/lexicon.mjs";
 import { parse } from "../skills/dubwise/scripts/notation.mjs";
 
 /** A reading as a model would answer for "Martin Campbell style", the film director. */
@@ -142,5 +145,50 @@ describe("composing with a reading", () => {
 
     it("mentions the reading even when every word was known", () => {
         assert.match(riddimWith("a dark steppers", SPY_FILM).result.summary, /the AI read it as: spy film/);
+    });
+});
+
+describe("grounding a reading in its own words", () => {
+    const file = readFileSync(join(import.meta.dirname, "..", "skills", "dubwise", "assets", "lexicon.bin"));
+    const { read } = parseLexicon(file.buffer.slice(file.byteOffset, file.byteOffset + file.length));
+    /** Picks a small model made up, the second worked example's, which the words should overrule. */
+    const COPIED = { style: "rockers", tempo: "lively", mode: "major", echo: "low", density: "busy", bass: "melodic" };
+
+    it("turns the words the composer knows into settings", () => {
+        const reading = {
+            reading: "lively, bouncy, joyful, energetic",
+            tempo: "slow",
+            mode: "minor",
+            density: "sparse",
+        };
+        assert.deepEqual(groundReading(reading), { ...reading, tempo: "lively", mode: "major", density: "busy" });
+    });
+
+    it("keeps a named tempo that leans the same way as the words", () => {
+        assert.equal(groundReading({ reading: "calm", tempo: "laid back" }).tempo, "laid back");
+        assert.equal(groundReading({ reading: "calm", tempo: "frantic" }).tempo, "slow");
+    });
+
+    it("reads the words the composer does not know with the word map", () => {
+        // Readings from a live log of Qwen3.5 2B, which picked major for all three.
+        for (const words of ["2pac: iconic, gritty, revolutionary", "Martin Campbell: iconic, dramatic, cinematic"]) {
+            assert.equal(groundReading({ ...COPIED, reading: words }, read).mode, "minor", words);
+        }
+        assert.equal(
+            groundReading({ ...COPIED, mode: "minor", reading: "xuxa: playful, whimsical" }, read).mode,
+            "major",
+        );
+    });
+
+    it("skips the subject label, which only repeats the idea", () => {
+        assert.equal(groundReading({ reading: "dark side of the moon: happy, sunny", mode: "minor" }).mode, "major");
+    });
+
+    it("keeps the model's picks where its words say nothing", () => {
+        assert.deepEqual(groundReading({ ...COPIED, reading: "spy film: cinematic" }), {
+            ...COPIED,
+            reading: "spy film: cinematic",
+        });
+        assert.deepEqual(groundReading({ mode: "minor" }, read), { mode: "minor" });
     });
 });

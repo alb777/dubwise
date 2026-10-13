@@ -82,7 +82,7 @@ The word lists cover styles, moods, images and more than a hundred references, b
 2. **Chrome's built-in model**, offered only when the browser has one.
 3. **A server you choose**: Ollama or LM Studio on your computer, or an online service such as Groq, OpenRouter or Gemini with your own key. Ollama has to let the page in: `OLLAMA_ORIGINS=https://alb777.github.io ollama serve`. LM Studio needs CORS turned on.
 
-The AI never writes notes. It fills a small form (style, tempo, key, mood, echo, density, bass and a few words on how it read the idea), dubwise checks every value, and the composer uses it only where the idea's own words and the artists it knows leave a gap. It is only asked about the words dubwise does not know, or the whole idea when you type `ai <idea>`. If it fails, the word map reads the idea instead. Nothing is sent anywhere until you pick a provider; a key stays in the tab and is forgotten when it closes.
+The AI never writes notes. It fills a small form (a few words on how it read the idea, then style, tempo, mood, echo, density and bass) and dubwise checks every value. Its words count more than its picks: a small model describes an idea well (`2pac: iconic, gritty, revolutionary`) but leans to major and to its worked examples when it picks, so the word lists and the word map turn its words into settings first, and its picks fill only what the words leave open. The composer uses the result only where the idea's own words and the artists it knows leave a gap. It is only asked about the words dubwise does not know, or the whole idea when you type `ai <idea>`. If it fails, the word map reads the idea instead. Nothing is sent anywhere until you pick a provider; a key stays in the tab and is forgotten when it closes.
 
 ## Offline
 

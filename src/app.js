@@ -7,6 +7,7 @@
  */
 
 import { compose, readIntent } from "../skills/dubwise/scripts/composer.mjs";
+import { groundReading } from "../skills/dubwise/scripts/intent.mjs";
 import { parseLexicon } from "../skills/dubwise/scripts/lexicon.mjs";
 import {
     chordAt,
@@ -268,15 +269,18 @@ async function composeIdea(request, askAnyway = false) {
             if (asking === controller) asking = null;
         }
     }
-    // Without an AI reading, dubwise's own word map reads the unknown words, accents and all.
-    if (!state.reading && unknown.length) {
+    // dubwise's own word map reads the unknown words, accents and all, when no AI did. When one did, the word lists
+    // and the word map turn the AI's own words into its settings, which fit the idea better than its picks.
+    if (state.reading || unknown.length) {
+        /** @type {Awaited<ReturnType<typeof loadWordMap>> | null} */
+        let map = null;
         try {
-            const reading = (await (wordMap ?? loadWordMap())).read(request, unknown);
-            if (state.lastRequest !== request) return;
-            state.reading = reading;
+            map = await (wordMap ?? loadWordMap());
         } catch {
             // The word map could not load, as on a first visit without a connection: the word lists alone read it.
         }
+        if (state.lastRequest !== request) return;
+        state.reading = state.reading ? groundReading(state.reading, map?.read) : (map?.read(request, unknown) ?? null);
     }
     composeAndPlay();
 }

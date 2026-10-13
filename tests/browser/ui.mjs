@@ -293,10 +293,12 @@ await withPage("/", async (page) => {
         askedAbout === "Idea: martin campbell",
         askedAbout,
     );
+    // The mock picks a lively tempo, but its own words, "tense, dark", read slow, and the words win.
+    const bpm = await evaluate("document.getElementById('bpm').value");
     check(
-        "the riddim follows the reading",
-        (await evaluate("document.getElementById('keyinfo').textContent")).endsWith(" minor") &&
-            (await evaluate("document.getElementById('bpm').value")) >= 78,
+        "the riddim follows the reading's words over its picks",
+        (await evaluate("document.getElementById('keyinfo').textContent")).endsWith(" minor") && bpm < 78,
+        bpm,
     );
     // The dialog's try already read this idea, so composing it reused that reading. From here nothing should ask.
     const asked = aiRequests;

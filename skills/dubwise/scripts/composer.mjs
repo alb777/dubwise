@@ -489,10 +489,12 @@ const IMAGERY = [
         feel: { tempo: "fast", density: "busy" },
         words: wordsOf(
             "party dancefloor rave club festival carnival run running chase chasing race racing energy",
-            "energetic jump jumping fire hype crazy wild frantic frenetic rush punk punky rock",
+            "energetic jump jumping fire hype crazy wild frantic frenetic rush punk punky rock festive celebration",
+            "celebratory",
             "festa balada pista carnaval correr correndo corrida perseguicao perseguindo energia energetico",
             "energetica pular pulando fogo louco louca doido doida selvagem frenetico frenetica agito",
-            "fiesta rumba carrera persiguiendo persecucion saltar fuego loco loca salvaje",
+            "festivo festiva comemoracao",
+            "fiesta rumba carrera persiguiendo persecucion saltar fuego loco loca salvaje celebracion",
         ),
     },
     {

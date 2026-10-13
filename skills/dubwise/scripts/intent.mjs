@@ -1,9 +1,10 @@
 // @ts-check
 /**
  * What an AI fills in when the composer's own word lists do not cover an idea. The model never writes notes: it
- * answers this small JSON form, sanitizeReading() keeps only valid values, and the composer uses them below what the
- * idea says outright and below the artists it knows.
+ * answers this small JSON form, sanitizeReading() keeps only valid values, groundReading() lets its own words overrule
+ * its picks, and the composer uses them below what the idea says outright and below the artists it knows.
  */
+import { readIntent } from "./composer.mjs";
 
 /** @typedef {import("./composer.mjs").Style} Style */
 /** @typedef {import("./composer.mjs").Mode} Mode */
@@ -125,4 +126,43 @@ export function sanitizeReading(answer) {
         if (words) reading.reading = words;
     }
     return Object.keys(reading).length ? /** @type {Reading} */ (reading) : null;
+}
+
+/** Which way a named tempo leans: slower, neither or faster. @type {Record<Tempo, number>} */
+const LEAN = { slow: -1, "laid back": -1, steady: 0, lively: 1, frantic: 1 };
+
+/**
+ * A model's reading with its settings taken from its own words wherever they say something. In a live log of Qwen3.5
+ * 2B the words fitted each idea ("2pac: iconic, gritty, revolutionary") while the picks leaned to major and copied
+ * the second worked example. So the words the composer knows set their fields, `read` (the word map in lexicon.mjs)
+ * sets the ones still open, and the model's own picks fill the rest. A named tempo that leans the same way as the
+ * words is kept, as it is finer than slow or lively.
+ * @param {Reading} reading from sanitizeReading()
+ * @param {(text: string) => Reading | null} [read]
+ * @returns {Reading}
+ */
+export function groundReading(reading, read) {
+    // The words after a "subject:" label describe it; the label only repeats the idea, names and all.
+    const words = (reading.reading ?? "")
+        .split(",")
+        .map((item) => item.replace(/^[^:]*:\s*/, ""))
+        .join(", ");
+    if (!/[\p{L}\p{N}]/u.test(words)) return reading;
+    const mapped = read?.(words);
+    const { style, tempo, mode, echo, density, bass } = readIntent(words);
+    /** @type {Reading} */
+    const said = {
+        tempo: tempo ? (tempo === "slow" ? "slow" : "lively") : mapped?.tempo,
+        mode: mode ?? mapped?.mode,
+        echo: echo ?? mapped?.echo,
+        density: density ?? mapped?.density,
+        style,
+        bass,
+    };
+    const grounded = { ...reading };
+    for (const [field, value] of Object.entries(said)) {
+        if (value) Object.assign(grounded, { [field]: value });
+    }
+    if (said.tempo && reading.tempo && LEAN[said.tempo] === LEAN[reading.tempo]) grounded.tempo = reading.tempo;
+    return grounded;
 }
