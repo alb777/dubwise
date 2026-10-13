@@ -29,6 +29,7 @@ import { applyRiddim, createSequencer } from "./sequencer.js";
 /** @typedef {import("./console.js").Channel} Channel */
 
 const FROM_LINK = "from-link";
+const CUSTOM = "custom";
 
 /**
  * @template {HTMLElement} T
@@ -134,6 +135,9 @@ let hashTimer;
 
 /** @param {Riddim} riddim */
 function commit(riddim) {
+    // Any change makes this a custom riddim; loading a preset or a link relabels it right after.
+    if (!ui.preset.querySelector(`option[value="${CUSTOM}"]`)) ui.preset.add(new Option("custom", CUSTOM), 0);
+    ui.preset.value = CUSTOM;
     state.riddim = riddim;
     state.text = serialize(riddim);
     state.bar = Math.min(state.bar, riddim.bars - 1);
@@ -183,8 +187,7 @@ function loadFromLink() {
     const text = fromHash(location.hash);
     if (text === null || text.trim() === state.text.trim()) return text !== null;
     if (!ui.preset.querySelector(`option[value="${FROM_LINK}"]`)) ui.preset.add(new Option("from link", FROM_LINK), 0);
-    ui.preset.value = FROM_LINK;
-    loadText(text);
+    if (loadText(text)) ui.preset.value = FROM_LINK;
     return true;
 }
 
@@ -548,7 +551,7 @@ function execute(input) {
 buildStrips();
 for (const name of PRESETS) ui.preset.add(new Option(name.replace("-", " "), name));
 ui.preset.addEventListener("change", () => {
-    if (ui.preset.value !== FROM_LINK) void loadPreset(ui.preset.value);
+    if (ui.preset.value !== FROM_LINK && ui.preset.value !== CUSTOM) void loadPreset(ui.preset.value);
 });
 ui.play.addEventListener("click", togglePlay);
 ui.share.addEventListener("click", () => execute("share"));

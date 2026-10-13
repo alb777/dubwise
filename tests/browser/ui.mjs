@@ -82,6 +82,10 @@ await withPage("/", async (page) => {
         (await evaluate("document.getElementById('play').getAttribute('aria-pressed')")) === "true",
     );
     check(
+        "a composed riddim is labelled custom",
+        (await evaluate("document.getElementById('preset').value")) === "custom",
+    );
+    check(
         "the composed riddim is rockers",
         (await evaluate(`document.querySelector('.cell[data-drum="kick"][data-step="0"]').dataset.value`)) === "1",
     );
