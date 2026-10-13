@@ -242,6 +242,17 @@ describe("references and images", () => {
             "a foundation riddim",
             "a riddim with covers",
             "barley in the field",
+            // Each one a slip away from a name, found by running everyday phrases against the catalogue.
+            "a great day at the beach",
+            "a gorilla in the jungle",
+            "the first riddim of the night",
+            "an outcast in the city",
+            "o malvado da novela",
+            "salsa reggae night",
+            "drive music",
+            "happy house riddim",
+            "uma brahma gelada",
+            "something special",
         ];
         for (const idea of ideas) assert.equal(readIntent(idea).artist, undefined, idea);
     });
@@ -251,6 +262,8 @@ describe("references and images", () => {
             ["lemi irie e drake", "Liemy irie", "lemi irie"],
             ["king tuby", "King Tubby", "king tuby"],
             ["roots like steel pulce", "Steel Pulse", "steel pulce"],
+            ["bethoven", "Ludwig van Beethoven", "bethoven"],
+            ["um som do emicda", "Emicida", "emicda"],
         ];
         for (const [idea, name, typed] of cases) {
             const intent = readIntent(idea);
@@ -296,7 +309,7 @@ describe("references and images", () => {
             ["furious robots in the factory", { style: "steppers", mode: "minor", bass: "root", unknown: [] }],
             ["una fiesta en la playa", { tempo: "fast", mode: "major", unknown: [] }],
             ["70s roots with lots of echo", { artist: "the 70s", style: "one-drop", echo: "high" }],
-            ["ska punk party", { artist: "ska", tempo: "fast", unknown: [] }],
+            ["ska punk party", { artist: "ska punk", tempo: "fast", unknown: [] }],
             ["o som das radiolas de São Luís", { artist: "reggae do Maranhão", unknown: [] }],
             ["nyabinghi drums at midnight", { artist: "nyabinghi", mode: "minor", unknown: [] }],
             ["um dub psicodélico pra viajar", { echo: "high", unknown: [] }],

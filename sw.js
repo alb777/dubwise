@@ -1,6 +1,6 @@
 // Offline support: the whole app is cached on the first visit, then served from the cache.
 // VERSION is a hash of the precached files, stamped by `npm run sw:version`; a test fails when it is stale.
-const VERSION = "dubwise-906bef2632";
+const VERSION = "dubwise-74969971b3";
 // The in-browser AI model's library, pinned like WEBLLM_URL in src/ai.js. It is cached on first use under a name of
 // its own, so app updates keep it; WebLLM keeps the model itself in caches of its own ("webllm/...").
 const WEBLLM_URL = "https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.86/+esm";
@@ -26,6 +26,7 @@ const PRECACHE = [
     "src/sequencer.js",
     "skills/dubwise/scripts/artists.mjs",
     "skills/dubwise/scripts/composer.mjs",
+    "skills/dubwise/scripts/distance.mjs",
     "skills/dubwise/scripts/intent.mjs",
     "skills/dubwise/scripts/lexicon.mjs",
     "skills/dubwise/scripts/notation.mjs",

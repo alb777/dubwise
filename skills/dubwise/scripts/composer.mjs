@@ -6,8 +6,11 @@
  *
  * Artist references shape style, tempo and feel only. Nothing here holds or copies a real song.
  */
-import { ARTISTS } from "./artists.mjs";
+import { ARTISTS, NOT_NAMES } from "./artists.mjs";
+import { editDistance } from "./distance.mjs";
 import { bassMidi, parse, STEPS_PER_BAR, serialize } from "./notation.mjs";
+
+export { editDistance };
 
 /** @typedef {"one-drop" | "rockers" | "steppers"} Style */
 /** @typedef {"major" | "minor"} Mode */
@@ -743,26 +746,11 @@ export function readIntent(request) {
     return intent;
 }
 
-/** Edits between two words, a swap of neighbours counting as one, so "stpo" is one edit from "stop". */
-export function editDistance(/** @type {string} */ a, /** @type {string} */ b) {
-    const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
-    for (let j = 1; j <= b.length; j++) d[0][j] = j;
-    for (let i = 1; i <= a.length; i++) {
-        for (let j = 1; j <= b.length; j++) {
-            const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-            d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + cost);
-            if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1])
-                d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
-        }
-    }
-    return d[a.length][b.length];
-}
-
 /**
  * The words of an idea that name an artist with a slip of the keyboard, if any. A one-word name of six letters or
  * more may be one edit off. In a longer name every word but one must be exact, and that one may be two edits off.
- * First letters must agree and words the composer already knows never count, which keeps "foundation" from reading
- * as Groundation.
+ * First letters must agree, and words the composer already knows or common words (NOT_NAMES) never count, which
+ * keeps "foundation" from reading as Groundation and "great day" as Green Day.
  * @param {string} words normalized idea with exact names blanked out @param {string} alias
  * @returns {string | undefined}
  */
@@ -775,7 +763,7 @@ function nearAlias(words, alias) {
         const off = typed.filter((word, k) => word !== wanted[k]);
         if (off.length !== 1 || typed.some((word, k) => word[0] !== wanted[k][0] || word === "|")) continue;
         const k = typed.indexOf(off[0]);
-        if (VOCABULARY.has(off[0]) || wanted[k].length < 4) continue;
+        if (VOCABULARY.has(off[0]) || NOT_NAMES.has(off[0]) || wanted[k].length < 4) continue;
         if (editDistance(off[0], wanted[k]) <= (wanted.length === 1 ? 1 : 2)) return typed.join(" ");
     }
     return undefined;
