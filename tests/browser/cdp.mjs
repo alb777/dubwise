@@ -36,9 +36,11 @@ async function serve() {
 /**
  * Open `path` in a fresh headless browser and hand `fn` a small page API.
  * @param {string} path page path from the repo root, such as "/" or "/tests/browser/check.html", or a full URL
- * @param {(page: { evaluate: (expression: string) => Promise<any>, send: (method: string, params?: object) => Promise<any>, errors: string[], wait: (ms: number) => Promise<void> }) => Promise<void>} fn
+ * @param {(page: { evaluate: (expression: string) => Promise<any>, send: (method: string, params?: object) => Promise<any>, on: (method: string, handler: (params: any) => void) => void, errors: string[], wait: (ms: number) => Promise<void> }) => Promise<void>} fn
+ * @param {{ setup?: (send: (method: string, params?: object) => Promise<any>) => Promise<void> }} [options]
+ *   `setup` runs after the tab opens and before it navigates, for viewport sizes and injected scripts
  */
-export async function withPage(path, fn) {
+export async function withPage(path, fn, options = {}) {
     const server = await serve();
     const browser = spawn(
         process.env.BROWSER ?? "brave",
@@ -64,8 +66,11 @@ export async function withPage(path, fn) {
         let nextId = 0;
         const pending = new Map();
         const errors = [];
+        /** @type {Map<string, (params: any) => void>} */
+        const listeners = new Map();
         socket.addEventListener("message", (message) => {
             const data = JSON.parse(message.data);
+            if (data.method && listeners.has(data.method)) listeners.get(data.method)(data.params);
             if (data.id && pending.has(data.id)) {
                 pending.get(data.id)(data);
                 pending.delete(data.id);
@@ -88,6 +93,7 @@ export async function withPage(path, fn) {
         ({ sessionId } = await send("Target.attachToTarget", { targetId, flatten: true }));
         await send("Runtime.enable");
         await send("Page.enable");
+        await options.setup?.(send);
         const url = /^https?:/.test(path) ? path : `http://127.0.0.1:${server.address().port}${path}`;
         await send("Page.navigate", { url });
         const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -97,7 +103,8 @@ export async function withPage(path, fn) {
             if (reply.exceptionDetails) throw new Error(reply.exceptionDetails.exception?.description);
             return reply.result.value;
         };
-        await fn({ evaluate, send, errors, wait });
+        const on = (method, handler) => listeners.set(method, handler);
+        await fn({ evaluate, send, on, errors, wait });
         socket.close();
     } finally {
         browser.kill();

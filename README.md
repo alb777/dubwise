@@ -4,7 +4,9 @@ A dub sound system in your browser. Describe a riddim in your own words and it p
 
 **Play it: https://alb777.github.io/dubwise/**
 
-![dubwise playing a one drop riddim](docs/screenshot.png)
+[![An idea typed into the console becomes a riddim](docs/demo.gif)](https://alb777.github.io/dubwise/docs/demo.mp4)
+
+**[Watch the 1 minute demo with sound](https://alb777.github.io/dubwise/docs/demo.mp4)**: one drop, an idea typed in Portuguese turning into a riddim, echo throws, the siren, a bass drop-out and a steppers. Recorded from the real app, sound included.
 
 ## What you can do
 
@@ -14,7 +16,7 @@ A dub sound system in your browser. Describe a riddim in your own words and it p
 4. **Edit the pattern.** Click steps in the grid; shift-click clears one.
 5. **Live-code it.** Type `bpm 76` or `kick x...x...x...x...` in the console and the riddim changes on the next step.
 6. **Share it.** The whole riddim lives in the link, so `share` copies a URL that plays exactly what you hear.
-7. **Describe it.** Type an idea in English, Portuguese or Spanish (`inspired by Augustus Pablo`, `a dark steppers in D minor`, `um one drop lento com muito eco`) and dubwise writes the riddim on your machine. `again` gives another version, `undo` goes back.
+7. **Describe it.** Type an idea (`inspired by Augustus Pablo`, `a dark steppers in D minor`) and dubwise writes the riddim on your machine. It also understands Portuguese and Spanish, so `um one drop lento com muito eco` works too. `again` gives another version, `undo` goes back.
 8. **Ask any AI.** `prompt <idea>` copies a prompt for any chat AI. Paste its answer back into the console and it plays.
 
 ## The console
@@ -57,7 +59,7 @@ Drums take 16 steps per bar (`.` rest, `x` hit, `X` accent, `o` open hat). The b
 
 ## How ideas become riddims
 
-The composer runs in the page, with no model and no network. It reads the idea for a style (one drop, rockers, steppers), a tempo (`80 bpm`, `lento`), a key (`in D minor`, `em Ré menor`), a mood (dark, happy, lots of echo, minimal, melodic bass) and artist or scene references, then writes drums, chords and a bass line that follow the rules of the style. The same idea always gives the same riddim, and `again` walks through other versions.
+The composer runs in the page, with no model and no network. It reads the idea for a style (one drop, rockers, steppers), a tempo (`80 bpm`, `slow`), a key (`in D minor`, `Gm`), a mood (dark, happy, lots of echo, minimal, melodic bass) and artist or scene references, then writes drums, chords and a bass line that follow the rules of the style. The same idea always gives the same riddim, and `again` walks through other versions.
 
 Artist references map to broad style traits only: King Tubby means heavy echo and channels dropping out, Jah Shaka means militant steppers. dubwise holds no songs, so it never copies a real bassline or melody, and a name it does not know is said out loud instead of guessed at. The `prompt` command asks the same of any chat AI you hand the idea to.
 
