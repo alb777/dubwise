@@ -22,6 +22,43 @@ export const DRUMS = /** @type {const} */ (["kick", "rim", "hat", "skank"]);
 export const DEFAULT_BASE_URL = "https://alb777.github.io/dubwise/";
 
 const SETTINGS = new Set(["bpm", "key", "swing", "bars", "echo", "spring", "bass", "chords", ...DRUMS]);
+
+/**
+ * The notation in a few lines: the app's help, the prompt for an AI and the agent skill all quote this text.
+ */
+export const SPEC = `dubwise riddim notation, version ${VERSION}. One setting per line. "# " starts a comment.
+
+dubwise 1             first line, always
+bpm 72                50 to 200
+key A minor           root A to G with an optional # or b, then major or minor
+swing 0.15            0 to 0.6: every odd 16th is delayed by that share of a step
+bars 2                1 to ${MAX_BARS}; defaults to the longest pattern; shorter patterns loop
+kick   <steps>        16 steps per bar, bars split by |: . rest, x hit, X accent
+rim    <steps>        same as kick
+hat    <steps>        same, plus o for an open hat
+skank  <steps>        chord chops, playing the chord the chords line gives for that step
+chords 1 | 4          1, 2 or 4 chord degrees per bar; diatonic to the key; m or M forces minor or major
+bass   <tokens>       16 tokens per bar, space separated: . rest, - holds the previous note,
+                      a scale degree 1 to 7 with an optional b or # (b3), ' an octave up, , an octave down (5,)
+echo 3/16 0.55        tape echo time as a note length over 4, 8, 16 or 32, and feedback 0 to 0.95
+spring 0.3            spring reverb level 0 to 1
+
+Steps count from 1: beat 1 is step 1, beat 2 is step 5, beat 3 is step 9, beat 4 is step 13.
+Styles: one drop puts kick and rim together on beat 3 and leaves beat 1 empty; rockers puts the kick
+on beats 1 and 3; steppers puts the kick on every beat. The skank usually sits on beats 2 and 4.
+Dub tempos sit around 66 to 80 bpm.`;
+
+/**
+ * Set one line of riddim text, replacing that setting if it is already there, and parse the result.
+ * @param {string} text current riddim text
+ * @param {string} line a setting line such as "bpm 76" or "kick x...x...x...x..."
+ */
+export function setLine(text, line) {
+    const name = line.trim().split(/\s+/)[0];
+    const kept = text.split(/\r?\n/).filter((existing) => existing.trim().split(/\s+/)[0] !== name);
+    const merged = `${kept.join("\n").trimEnd()}\n${line.trim()}\n`;
+    return { text: merged, ...parse(merged) };
+}
 const NOTE_ROOTS = /** @type {Record<string, number>} */ ({ C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 });
 const SCALES = { major: [0, 2, 4, 5, 7, 9, 11], minor: [0, 2, 3, 5, 7, 8, 10] };
 const DRUM_SYMBOLS = /** @type {Record<string, number>} */ ({ ".": 0, x: 1, X: 2, o: 3 });

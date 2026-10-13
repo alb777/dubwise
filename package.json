@@ -6,7 +6,7 @@
     "scripts": {
         "test": "node --test tests/",
         "check": "tsc -p . && biome check .",
-        "check:browser": "node tests/browser/run.mjs"
+        "check:browser": "node tests/browser/audio.mjs && node tests/browser/ui.mjs"
     },
     "devDependencies": {
         "@biomejs/biome": "2.5.14",

@@ -1,0 +1,15 @@
+{
+    "name": "dubwise",
+    "short_name": "dubwise",
+    "description": "A dub sound system in your browser: synthesized riddims, tape echo, spring reverb, a siren and a console you can live-code or hand to an AI.",
+    "start_url": "./",
+    "scope": "./",
+    "display": "standalone",
+    "background_color": "#141210",
+    "theme_color": "#141210",
+    "icons": [
+        { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml" },
+        { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+        { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    ]
+}

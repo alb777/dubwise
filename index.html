@@ -4,134 +4,73 @@
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>dubwise</title>
-        <meta name="description" content="A dub sound system in your browser: synthesized riddims, tape echo, spring reverb and a siren." />
-        <style>
-            :root {
-                --bg: #12100e;
-                --panel: #1d1a16;
-                --line: #3a332a;
-                --text: #efe6d6;
-                --muted: #a39580;
-                --accent: #e8b23a;
-                --hot: #d9472b;
-                color-scheme: dark;
-            }
-            * {
-                box-sizing: border-box;
-            }
-            body {
-                margin: 0;
-                min-height: 100vh;
-                background: var(--bg);
-                color: var(--text);
-                font: 15px/1.4 ui-monospace, "JetBrains Mono", "DejaVu Sans Mono", monospace;
-            }
-            main {
-                max-width: 760px;
-                margin: 0 auto;
-                padding: 24px 16px 48px;
-            }
-            h1 {
-                margin: 0;
-                font-size: 28px;
-                letter-spacing: 0.08em;
-            }
-            .tag {
-                margin: 4px 0 20px;
-                color: var(--muted);
-            }
-            .row {
-                display: flex;
-                flex-wrap: wrap;
-                gap: 10px;
-                align-items: center;
-                margin-bottom: 16px;
-            }
-            button,
-            select {
-                font: inherit;
-                color: var(--text);
-                background: var(--panel);
-                border: 1px solid var(--line);
-                border-radius: 6px;
-                padding: 8px 14px;
-                cursor: pointer;
-                touch-action: none;
-                user-select: none;
-            }
-            button[aria-pressed="true"] {
-                border-color: var(--accent);
-                color: var(--accent);
-            }
-            button.held {
-                background: var(--hot);
-                border-color: var(--hot);
-                color: #fff;
-            }
-            #play {
-                min-width: 90px;
-                font-weight: bold;
-            }
-            .channels {
-                display: grid;
-                grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-                gap: 10px;
-                margin-bottom: 16px;
-            }
-            .channel {
-                display: grid;
-                gap: 6px;
-                padding: 10px;
-                background: var(--panel);
-                border: 1px solid var(--line);
-                border-radius: 8px;
-            }
-            .channel strong {
-                color: var(--muted);
-                text-transform: uppercase;
-                font-size: 12px;
-                letter-spacing: 0.1em;
-            }
-            label {
-                display: grid;
-                gap: 6px;
-                color: var(--muted);
-                flex: 1 1 220px;
-            }
-            input[type="range"] {
-                width: 100%;
-                accent-color: var(--accent);
-            }
-            #siren {
-                padding: 18px;
-                flex: 1 1 100%;
-            }
-            #status {
-                color: var(--muted);
-                white-space: pre-wrap;
-                min-height: 1.4em;
-            }
-            #status.error {
-                color: var(--hot);
-            }
-        </style>
+        <meta
+            name="description"
+            content="A dub sound system in your browser: synthesized riddims, tape echo, spring reverb, a siren and a console you can live-code or hand to an AI."
+        />
+        <meta name="theme-color" content="#141210" />
+        <link rel="manifest" href="manifest.webmanifest" />
+        <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+        <link rel="stylesheet" href="styles.css" />
     </head>
     <body>
         <main>
-            <h1>dubwise</h1>
-            <p class="tag">a dub sound system in your browser</p>
-            <div class="row">
-                <select id="preset" aria-label="Riddim preset"></select>
-                <button id="play" type="button">Play</button>
-            </div>
-            <div class="channels" id="channels"></div>
-            <div class="row">
-                <label>Filter: dark to thin <input id="filter" type="range" min="-1" max="1" step="0.01" value="0" /></label>
-            </div>
-            <div class="row">
-                <button id="siren" type="button">Hold for the siren, slide sideways to bend it</button>
-            </div>
-            <p id="status" role="status"></p>
+            <header class="top">
+                <div class="brand">
+                    <h1>dub<span>wise</span></h1>
+                    <small>a dub sound system in your browser</small>
+                </div>
+                <div class="transport">
+                    <button id="play" type="button" aria-pressed="false">play</button>
+                    <label class="field">bpm <input id="bpm" type="number" min="50" max="200" step="1" /></label>
+                    <span id="keyinfo"></span>
+                    <select id="preset" aria-label="Riddim preset"></select>
+                    <button id="share" type="button">share</button>
+                </div>
+            </header>
+
+            <section class="panel" aria-label="Step sequencer">
+                <div class="bars" id="bars"></div>
+                <div class="grid-wrap"><div class="grid" id="grid"></div></div>
+            </section>
+
+            <section class="desk">
+                <div class="panel strips" id="strips" aria-label="Channels"></div>
+                <div class="panel fx">
+                    <label>echo time
+                        <select id="echo-time">
+                            <option value="1/8">1/8</option>
+                            <option value="3/16">3/16</option>
+                            <option value="1/4">1/4</option>
+                            <option value="3/8">3/8</option>
+                            <option value="1/2">1/2</option>
+                        </select>
+                        <span></span>
+                    </label>
+                    <label>feedback <input id="feedback" type="range" min="0" max="0.95" step="0.01" /><output for="feedback"></output></label>
+                    <label>spring <input id="spring" type="range" min="0" max="1" step="0.01" /><output for="spring"></output></label>
+                    <label>filter <input id="filter" type="range" min="-1" max="1" step="0.01" value="0" /><output for="filter">open</output></label>
+                    <label>volume <input id="volume" type="range" min="0" max="1" step="0.01" value="0.85" /><output for="volume"></output></label>
+                    <div class="siren" id="siren" aria-label="Siren pad: hold, slide sideways for pitch, up and down for speed">
+                        <span>siren: hold, slide ↔ pitch ↕ speed</span>
+                        <div class="dot"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="panel console" aria-label="Console">
+                <div class="log" id="log" aria-live="polite"></div>
+                <form class="prompt" id="prompt">
+                    <span aria-hidden="true">&gt;</span>
+                    <textarea id="command" rows="1" autocomplete="off" spellcheck="false" aria-label="Console command"
+                        placeholder="type help, a notation line like bpm 76, or ai followed by an idea"></textarea>
+                </form>
+            </section>
+
+            <footer>
+                dubwise, open source, synthesized sounds only.
+                <a href="https://github.com/alb777/dubwise">source</a>
+            </footer>
         </main>
         <script type="module" src="src/app.js"></script>
     </body>
