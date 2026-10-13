@@ -58,7 +58,8 @@ const ui = {
     log: byId("log"),
     prompt: /** @type {HTMLFormElement} */ (byId("prompt")),
     command: /** @type {HTMLTextAreaElement} */ (byId("command")),
-    theme: /** @type {HTMLSelectElement} */ (byId("theme")),
+    theme: byId("theme"),
+    themeMenu: byId("theme-menu"),
     guide: byId("guide"),
     guideToggle: byId("guide-toggle"),
     guideClose: byId("guide-close"),
@@ -439,7 +440,11 @@ function isTheme(name) {
 /** @param {keyof typeof THEMES} name @param {boolean} [save] */
 function setTheme(name, save = true) {
     document.documentElement.dataset.theme = name;
-    ui.theme.value = name;
+    ui.theme.title = `colour theme: ${THEMES[name]}`;
+    ui.theme.setAttribute("aria-label", ui.theme.title);
+    for (const item of ui.themeMenu.querySelectorAll("button")) {
+        item.setAttribute("aria-checked", String(item.dataset.value === name));
+    }
     // The browser bar on phones follows the page background.
     const background = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim();
     document.querySelector('meta[name="theme-color"]')?.setAttribute("content", background);
@@ -448,6 +453,41 @@ function setTheme(name, save = true) {
         localStorage.setItem(THEME_KEY, name);
     } catch {
         // Storage can be blocked, as in some private windows; the theme still applies to this visit.
+    }
+}
+
+/** One flag per theme. Each flag carries its own data-theme, so it is drawn by its theme, not the current one. */
+function buildThemeMenu() {
+    for (const [id, name] of Object.entries(THEMES)) {
+        const item = document.createElement("button");
+        item.type = "button";
+        item.setAttribute("role", "menuitemradio");
+        item.dataset.value = id;
+        item.title = name;
+        item.setAttribute("aria-label", name);
+        const flag = document.createElement("span");
+        flag.className = "flag";
+        flag.dataset.theme = id;
+        item.append(flag);
+        item.addEventListener("click", () => {
+            if (isTheme(id)) setTheme(id);
+            showThemeMenu(false, true);
+        });
+        ui.themeMenu.append(item);
+    }
+}
+
+const themeMenuOpen = () => !ui.themeMenu.hidden;
+
+/** @param {boolean} open @param {boolean} [focus] on closing, give the focus back to the button */
+function showThemeMenu(open, focus = false) {
+    ui.themeMenu.hidden = !open;
+    ui.theme.setAttribute("aria-expanded", String(open));
+    if (open) {
+        const checked = ui.themeMenu.querySelector('[aria-checked="true"]');
+        /** @type {HTMLElement | null} */ (checked ?? ui.themeMenu.firstElementChild)?.focus();
+    } else if (focus) {
+        ui.theme.focus();
     }
 }
 
@@ -649,11 +689,25 @@ function execute(input) {
 
 buildStrips();
 buildGuide();
-for (const [id, name] of Object.entries(THEMES)) ui.theme.add(new Option(name, id));
+buildThemeMenu();
 const savedTheme = document.documentElement.dataset.theme;
 setTheme(isTheme(savedTheme) ? savedTheme : "dub", false);
-ui.theme.addEventListener("change", () => {
-    if (isTheme(ui.theme.value)) setTheme(ui.theme.value);
+ui.theme.addEventListener("click", () => showThemeMenu(!themeMenuOpen()));
+ui.themeMenu.addEventListener("keydown", (event) => {
+    const items = [...ui.themeMenu.querySelectorAll("button")];
+    const at = items.indexOf(/** @type {HTMLButtonElement} */ (document.activeElement));
+    const moves = { ArrowRight: 1, ArrowDown: 4, ArrowLeft: -1, ArrowUp: -4 };
+    if (event.key in moves) {
+        event.preventDefault();
+        const step = moves[/** @type {keyof typeof moves} */ (event.key)];
+        items[(at + step + items.length) % items.length].focus();
+    } else if (event.key === "Tab") {
+        showThemeMenu(false);
+    }
+});
+// A click anywhere else closes the menu.
+document.addEventListener("pointerdown", (event) => {
+    if (themeMenuOpen() && !ui.theme.parentElement?.contains(/** @type {Node} */ (event.target))) showThemeMenu(false);
 });
 ui.guideToggle.addEventListener("click", () => showGuide(!guideOpen(), true));
 ui.guideClose.addEventListener("click", () => showGuide(false, true));
@@ -755,6 +809,10 @@ ui.command.addEventListener("keydown", (event) => {
 ui.prompt.addEventListener("submit", (event) => event.preventDefault());
 
 document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && themeMenuOpen()) {
+        showThemeMenu(false, true);
+        return;
+    }
     if (event.key === "Escape" && guideOpen()) {
         showGuide(false, ui.guide.contains(document.activeElement));
         return;

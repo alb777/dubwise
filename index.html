@@ -27,16 +27,23 @@
                     <h1>dub<span>wise</span></h1>
                     <small>a dub sound system in your browser</small>
                 </div>
+                <div class="utilities">
+                    <div class="theme-picker">
+                        <button id="theme" class="pill" type="button" aria-label="Colour theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-menu">
+                            <span class="flag" aria-hidden="true"></span><span class="caret" aria-hidden="true">▾</span>
+                        </button>
+                        <div class="theme-menu" id="theme-menu" role="menu" aria-label="Colour theme" hidden></div>
+                    </div>
+                    <button id="guide-toggle" class="pill" type="button" aria-controls="guide" aria-expanded="false" title="Open the guide (?)">
+                        <span class="icon" aria-hidden="true">?</span><span class="label">guide</span>
+                    </button>
+                </div>
                 <div class="transport">
                     <button id="play" type="button" aria-pressed="false">play</button>
                     <label class="field">bpm <input id="bpm" type="number" min="50" max="200" step="1" /></label>
                     <span id="keyinfo"></span>
                     <select id="preset" aria-label="Riddim preset"></select>
                     <button id="share" type="button">share</button>
-                    <select id="theme" aria-label="Colour theme"></select>
-                    <button id="guide-toggle" type="button" aria-controls="guide" aria-expanded="false" title="Open the guide (?)">
-                        <span aria-hidden="true">?</span>guide
-                    </button>
                 </div>
             </header>
 

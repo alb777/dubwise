@@ -9,8 +9,11 @@ const css = readFileSync(join(import.meta.dirname, "..", "styles.css"), "utf8");
 
 /** Colour tokens per theme: dub from :root, the others from their [data-theme] block. */
 const palettes = new Map();
+/** Themes that draw a little flag for the theme menu. */
+const flags = new Set();
 for (const [, selector, name, body] of css.matchAll(/(:root|\[data-theme="([a-z-]+)"\])\s*\{([^}]*)\}/g)) {
     const theme = selector === ":root" ? "dub" : name;
+    if (body.includes('--flag-icon: url("data:image/svg+xml,')) flags.add(theme);
     const colours = palettes.get(theme) ?? {};
     for (const [, token, value] of body.matchAll(/--([a-z0-9-]+):\s*(#[0-9a-f]{6});/g)) colours[token] = value;
     palettes.set(theme, colours);
@@ -58,6 +61,10 @@ const RULES = [
 describe("colour themes", () => {
     it("has a block in styles.css for every theme and no other", () => {
         assert.deepEqual([...palettes.keys()].sort(), Object.keys(THEMES).sort());
+    });
+
+    it("draws a little flag for every theme", () => {
+        assert.deepEqual([...flags].sort(), Object.keys(THEMES).sort());
     });
 
     it("sets every colour in every theme", () => {

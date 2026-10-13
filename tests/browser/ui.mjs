@@ -151,12 +151,24 @@ await withPage("/", async (page) => {
         "a theme from the console",
         (await evaluate(theme)) === "jamaica" && (await evaluate(background)) === "#0a0d09",
     );
-    await evaluate(`(() => {
-        const menu = document.getElementById("theme");
-        menu.value = "brazil";
-        menu.dispatchEvent(new Event("change"));
-    })()`);
-    check("a theme from the menu", (await evaluate(theme)) === "brazil");
+    const menuHidden = "document.getElementById('theme-menu').hidden";
+    const flagImage = (name) =>
+        `getComputedStyle(document.querySelector('#theme-menu [data-value="${name}"] .flag')).backgroundImage`;
+    await evaluate("document.getElementById('theme').click()");
+    check("the theme button opens a menu of flags", (await evaluate(menuHidden)) === false);
+    check(
+        "each flag is drawn by its own theme",
+        (await evaluate(flagImage("jamaica"))).includes("fed100") &&
+            (await evaluate(flagImage("dub"))).includes("e0452b"),
+    );
+    await evaluate(`document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }))`);
+    check("Escape closes the theme menu", (await evaluate(menuHidden)) === true);
+    await evaluate("document.getElementById('theme').click()");
+    await evaluate(`document.body.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }))`);
+    check("a click elsewhere closes the theme menu", (await evaluate(menuHidden)) === true);
+    await evaluate("document.getElementById('theme').click()");
+    await evaluate(`document.querySelector('#theme-menu [data-value="brazil"]').click()`);
+    check("a flag picks its theme", (await evaluate(theme)) === "brazil" && (await evaluate(menuHidden)) === true);
     check(
         "the phone bar follows the theme",
         (await evaluate(`document.querySelector('meta[name="theme-color"]').content`)) === "#04122b",
@@ -165,10 +177,17 @@ await withPage("/", async (page) => {
     await wait(1000);
     check(
         "the theme survives a reload",
-        (await evaluate(theme)) === "brazil" && (await evaluate("document.getElementById('theme').value")) === "brazil",
+        (await evaluate(theme)) === "brazil" &&
+            (await evaluate(`document.querySelector('#theme-menu [aria-checked="true"]').dataset.value`)) === "brazil",
     );
     await evaluate("window.scrollTo(0, 0)");
-    for (const name of await evaluate("[...document.getElementById('theme').options].map((o) => o.value)")) {
+    await evaluate("document.getElementById('theme').click()");
+    const menuShot = await send("Page.captureScreenshot", { format: "png" });
+    writeFileSync(join(outDir, "theme-menu.png"), Buffer.from(menuShot.data, "base64"));
+    await evaluate("document.getElementById('theme').click()");
+    for (const name of await evaluate(
+        "[...document.querySelectorAll('#theme-menu button')].map((b) => b.dataset.value)",
+    )) {
         await evaluate(type(`theme ${name}`));
         await wait(100);
         const shot = await send("Page.captureScreenshot", { format: "png" });
@@ -194,6 +213,11 @@ await withPage("/", async (page) => {
         const guideShot = await send("Page.captureScreenshot", { format: "png" });
         writeFileSync(join(outDir, `${name}-guide.png`), Buffer.from(guideShot.data, "base64"));
         await evaluate("document.getElementById('guide-close').click()");
+        await evaluate("window.scrollTo(0, 0); document.getElementById('theme').click()");
+        await wait(200);
+        const themeShot = await send("Page.captureScreenshot", { format: "png" });
+        writeFileSync(join(outDir, `${name}-theme-menu.png`), Buffer.from(themeShot.data, "base64"));
+        await evaluate("document.getElementById('theme').click()");
     }
     check("no errors while playing", page.errors.length === 0, page.errors);
 });

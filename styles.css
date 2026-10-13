@@ -1,10 +1,12 @@
 /*
- * Colour themes. :root is the dub theme; each [data-theme] block sets every colour again, so a theme never
- * inherits a colour that was checked against another background. tests/themes.test.mjs checks the contrast.
+ * Colour themes. :root is the dub theme, also reachable as [data-theme="dub"] so a preview can show it inside
+ * another theme. Each [data-theme] block sets every colour again, so a theme never inherits a colour that was
+ * checked against another background. tests/themes.test.mjs checks the contrast.
  * accent: lit steps and the main buttons. hot: accents, mute, throws, errors. cool: solo, chords, confirmations.
  * control-line: the border that keeps every button visible. flag: the stripe across the top.
  */
-:root {
+:root,
+[data-theme="dub"] {
     --bg: #141210;
     --panel: #1e1b17;
     --panel-2: #26221d;
@@ -23,6 +25,7 @@
     --control: #2c2721;
     --control-line: #857459;
     --flag: linear-gradient(90deg, #e0452b 0 33.33%, #f0b23b 0 66.66%, #7fb069 0);
+    --flag-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 20'%3E%3Crect width='30' height='20' fill='%237fb069'/%3E%3Crect width='30' height='13.34' fill='%23f0b23b'/%3E%3Crect width='30' height='6.67' fill='%23e0452b'/%3E%3C/svg%3E");
     --cell: 30px;
     color-scheme: dark;
 }
@@ -46,6 +49,7 @@
     --control: #1f281d;
     --control-line: #5f7055;
     --flag: linear-gradient(90deg, #009b3a 0 30%, #fed100 0 40%, #000000 0 60%, #fed100 0 70%, #009b3a 0);
+    --flag-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 20'%3E%3Crect width='30' height='20' fill='%23000'/%3E%3Cpath d='M0 0h30L15 10zM0 20h30L15 10z' fill='%23009b3a'/%3E%3Cpath d='M0 0l30 20M30 0L0 20' stroke='%23fed100' stroke-width='3'/%3E%3C/svg%3E");
     color-scheme: dark;
 }
 
@@ -68,6 +72,7 @@
     --control: #272218;
     --control-line: #7d7050;
     --flag: linear-gradient(90deg, #078930 0 33.33%, #fcdd09 0 66.66%, #da121a 0);
+    --flag-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 20'%3E%3Crect width='30' height='20' fill='%23da121a'/%3E%3Crect width='30' height='13.34' fill='%23fcdd09'/%3E%3Crect width='30' height='6.67' fill='%23078930'/%3E%3Ccircle cx='15' cy='10' r='4.6' fill='%230f47af'/%3E%3Cpath d='M15 6.6l2 6.1-5.2-3.8h6.4l-5.2 3.8z' fill='none' stroke='%23fcdd09' stroke-width='0.7' stroke-linejoin='round'/%3E%3C/svg%3E");
     color-scheme: dark;
 }
 
@@ -90,6 +95,7 @@
     --control: #142d57;
     --control-line: #5a7ab2;
     --flag: linear-gradient(90deg, #009c3b 0 25%, #ffdf00 0 40%, #002776 0 60%, #ffdf00 0 75%, #009c3b 0);
+    --flag-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 20'%3E%3Crect width='30' height='20' fill='%23009c3b'/%3E%3Cpath d='M15 2.2L27.6 10 15 17.8 2.4 10z' fill='%23ffdf00'/%3E%3Ccircle cx='15' cy='10' r='5' fill='%23002776'/%3E%3Cpath d='M10.3 8.6c3.2-.9 6.6-.3 9.5 1.7' stroke='%23fff' stroke-width='0.9' fill='none'/%3E%3C/svg%3E");
     color-scheme: dark;
 }
 
@@ -120,6 +126,7 @@
         #000000 0 74%,
         #001489 0
     );
+    --flag-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 20'%3E%3Crect width='30' height='10' fill='%23e03c31'/%3E%3Crect y='10' width='30' height='10' fill='%23001489'/%3E%3Cpath d='M0 0l13 10L0 20M13 10h17' stroke='%23fff' stroke-width='6.6' fill='none'/%3E%3Cpath d='M0 0l13 10L0 20M13 10h17' stroke='%23007749' stroke-width='4' fill='none'/%3E%3Cpath d='M0 3.4L8.6 10 0 16.6z' fill='%23000' stroke='%23ffb81c' stroke-width='1.2'/%3E%3C/svg%3E");
     color-scheme: dark;
 }
 
@@ -142,6 +149,7 @@
     --control: #17254d;
     --control-line: #5a6fa6;
     --flag: linear-gradient(90deg, #012169 0 30%, #ffffff 0 36%, #c8102e 0 64%, #ffffff 0 70%, #012169 0);
+    --flag-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 40'%3E%3CclipPath id='c'%3E%3Cpath d='M30 20h30v20zv20H0zH0V0zV0h30z'/%3E%3C/clipPath%3E%3Crect width='60' height='40' fill='%23012169'/%3E%3Cpath d='M0 0l60 40M60 0L0 40' stroke='%23fff' stroke-width='8'/%3E%3Cpath d='M0 0l60 40M60 0L0 40' clip-path='url(%23c)' stroke='%23c8102e' stroke-width='5'/%3E%3Cpath d='M30 0v40M0 20h60' stroke='%23fff' stroke-width='12'/%3E%3Cpath d='M30 0v40M0 20h60' stroke='%23c8102e' stroke-width='7'/%3E%3C/svg%3E");
     color-scheme: dark;
 }
 
@@ -164,6 +172,7 @@
     --control: #33121a;
     --control-line: #a35d69;
     --flag: linear-gradient(90deg, #da1a35 0 30%, #ffffff 0 34%, #000000 0 66%, #ffffff 0 70%, #da1a35 0);
+    --flag-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 20'%3E%3Crect width='30' height='20' fill='%23da1a35'/%3E%3Cpath d='M0 0h7.5L30 20h-7.5z' fill='%23fff'/%3E%3Cpath d='M1.6 0h4.3L28.4 20h-4.3z' fill='%23000'/%3E%3C/svg%3E");
     color-scheme: dark;
 }
 
@@ -186,6 +195,7 @@
     --control: #ffffff;
     --control-line: #8c7f7a;
     --flag: linear-gradient(#ffffff 0 50%, #dc143c 0);
+    --flag-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 20'%3E%3Crect width='30' height='20' fill='%23dc143c'/%3E%3Crect width='30' height='10' fill='%23fff'/%3E%3C/svg%3E");
     color-scheme: light;
 }
 
@@ -271,14 +281,113 @@ textarea:focus-visible {
     pointer-events: none;
 }
 
-/* top bar */
+/* top bar: the name on the left, theme and guide in the top right corner, the transport below */
 .top {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: 1fr auto;
     align-items: center;
-    gap: 10px 16px;
+    gap: 12px 16px;
 }
 
+.top .transport {
+    grid-column: 1 / -1;
+}
+
+.utilities {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 34px;
+    padding: 0 14px 0 8px;
+    border-radius: 999px;
+}
+
+.pill .icon {
+    display: inline-grid;
+    place-items: center;
+    flex: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+}
+
+.pill .caret {
+    color: var(--muted);
+    font-size: 11px;
+}
+
+/* a little flag, drawn by the theme it sits in: the current one on the button, its own in the menu */
+.flag {
+    display: inline-block;
+    flex: none;
+    width: 27px;
+    height: 18px;
+    border-radius: 3px;
+    background: var(--flag-icon) center / cover;
+    box-shadow: 0 0 0 1px var(--control-line);
+}
+
+#theme {
+    gap: 6px;
+    padding: 0 10px;
+}
+
+.theme-picker {
+    position: relative;
+}
+
+#theme[aria-expanded="true"] {
+    border-color: var(--accent);
+}
+
+.theme-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: 20;
+    padding: 8px;
+    display: grid;
+    grid-template-columns: repeat(4, auto);
+    gap: 6px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: 0 16px 40px rgb(0 0 0 / 0.45);
+}
+
+.theme-menu[hidden] {
+    display: none;
+}
+
+.theme-menu button {
+    display: grid;
+    place-items: center;
+    padding: 5px;
+    background: none;
+    border: 2px solid transparent;
+    border-radius: 8px;
+}
+
+.theme-menu button:hover,
+.theme-menu button:focus-visible {
+    background: var(--panel-2);
+    border-color: var(--control-line);
+}
+
+.theme-menu button[aria-checked="true"] {
+    border-color: var(--accent);
+}
+
+.theme-menu .flag {
+    width: 45px;
+    height: 30px;
+}
 .brand {
     display: flex;
     align-items: baseline;
@@ -649,13 +758,7 @@ footer a {
     border-color: var(--accent);
 }
 
-#guide-toggle span {
-    display: inline-grid;
-    place-items: center;
-    width: 18px;
-    height: 18px;
-    margin-right: 4px;
-    border-radius: 50%;
+#guide-toggle .icon {
     background: var(--accent);
     color: var(--on-accent);
     font-weight: bold;
@@ -825,6 +928,23 @@ footer a {
     }
     .fx label {
         grid-template-columns: 90px 1fr 60px;
+    }
+    /* theme and guide shrink to round icons; their names stay for screen readers */
+    .pill {
+        width: 38px;
+        padding: 0;
+        justify-content: center;
+    }
+    .pill .label {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+    }
+    .pill .caret {
+        display: none;
     }
     /* the guide becomes a sheet over the lower part of the screen, and the page can scroll above it */
     .guide {

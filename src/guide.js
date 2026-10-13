@@ -58,7 +58,7 @@ export const GUIDE = [
     },
     {
         title: "Pick your colours",
-        text: "Dress the sound system in a flag. This browser remembers the choice.",
+        text: "The flag in the top right corner dresses the sound system in another flag. This browser remembers the choice.",
         show: "#theme",
         try: [
             "theme jamaica",
