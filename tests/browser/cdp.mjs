@@ -35,7 +35,7 @@ async function serve() {
 
 /**
  * Open `path` in a fresh headless browser and hand `fn` a small page API.
- * @param {string} path page path from the repo root, such as "/" or "/tests/browser/check.html"
+ * @param {string} path page path from the repo root, such as "/" or "/tests/browser/check.html", or a full URL
  * @param {(page: { evaluate: (expression: string) => Promise<any>, send: (method: string, params?: object) => Promise<any>, errors: string[], wait: (ms: number) => Promise<void> }) => Promise<void>} fn
  */
 export async function withPage(path, fn) {
@@ -88,7 +88,8 @@ export async function withPage(path, fn) {
         ({ sessionId } = await send("Target.attachToTarget", { targetId, flatten: true }));
         await send("Runtime.enable");
         await send("Page.enable");
-        await send("Page.navigate", { url: `http://127.0.0.1:${server.address().port}${path}` });
+        const url = /^https?:/.test(path) ? path : `http://127.0.0.1:${server.address().port}${path}`;
+        await send("Page.navigate", { url });
         const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
         await wait(800);
         const evaluate = async (expression) => {
