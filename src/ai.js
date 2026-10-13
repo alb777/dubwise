@@ -287,7 +287,11 @@ export function prepareBrowserModel(size, onProgress) {
     return onLiveGpu(() => loadBrowserModel(size, onProgress), dropBrowserModel);
 }
 
-/** A reading request for the in-browser model. @param {string} idea @param {number} tokens */
+/**
+ * A reading request for the in-browser model. An answer takes about 75 tokens; a cap of 120 also stops Qwen3.5's habit
+ * of padding JSON with spaces until the limit.
+ * @param {string} idea @param {number} tokens
+ */
 function request(idea, tokens) {
     return {
         messages: readingMessages(idea),
@@ -313,7 +317,7 @@ export async function browserModelCached(size) {
 async function readWithBrowser(size, idea, onProgress) {
     const reply = await onLiveGpu(async () => {
         const engine = await loadBrowserModel(size, onProgress);
-        return engine.chat.completions.create(request(idea, 200));
+        return engine.chat.completions.create(request(idea, 120));
     }, dropBrowserModel);
     const reading = sanitizeReading(reply?.choices?.[0]?.message?.content);
     if (!reading) throw new Error("the answer did not fit the form");
