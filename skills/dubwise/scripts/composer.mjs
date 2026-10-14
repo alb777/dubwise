@@ -18,7 +18,8 @@ export { editDistance };
 /** @typedef {"sparse" | "normal" | "busy"} Density */
 /** @typedef {"root" | "melodic"} BassMove */
 /**
- * @typedef {{ name: string, aliases: string[], style: Style, bpm: number, mode: Mode, echo: Amount,
+ * @typedef {"reggae" | "riddim" | "rap" | "rock" | "funk" | "classical"} Family
+ * @typedef {{ name: string, aliases: string[], family: Family, style: Style, bpm: number, mode: Mode, echo: Amount,
  *   density: Density, bass: BassMove, traits: string }} Artist
  * @typedef {{ style?: Style, bpm?: number, tempo?: "slow" | "fast", root?: string, mode?: Mode, echo?: Amount,
  *   density?: Density, bass?: BassMove, artist?: Artist, mixArtist?: Artist, matched: string[],

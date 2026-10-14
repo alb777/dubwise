@@ -125,6 +125,7 @@ const state = {
 
 /** @type {Engine | null} */
 let engine = null;
+const selector = createSelector(SELECTOR);
 /** @type {ReturnType<typeof createSequencer> | null} */
 let sequencer = null;
 /** Steps scheduled ahead of time, shown when the audio clock reaches them. @type {{ step: number, time: number }[]} */
@@ -207,6 +208,7 @@ function composeAndPlay() {
     if (!result.understood) return print(result.summary, "err");
     remember();
     loadText(result.text);
+    selector.playing = result.intent.artist;
     print(result.summary, "ok");
     print('"again" for another version, "undo" to go back, "show" for the notation', "dim");
     if (state.ai.provider === "off" && result.intent.unknown.length && !state.toldAboutAI) {
@@ -905,8 +907,6 @@ async function copy(text, done) {
         print(text);
     }
 }
-
-const selector = createSelector(SELECTOR);
 
 /** A line typed in the console: talk for the selector, else a command or an idea. @param {string} input */
 function execute(input) {

@@ -28,6 +28,7 @@ const CHOICES = {
     echo: ["low", "mid", "high"],
     density: ["sparse", "normal", "busy"],
     bass: ["root", "melodic"],
+    family: ["reggae", "riddim", "rap", "rock", "funk", "classical"],
 };
 
 const source = await import(pathToFileURL(join(SOURCE, "artists.mjs")).href);
@@ -82,7 +83,7 @@ for (const alias of aliases.keys()) {
     }
 }
 
-const fields = ["name", "aliases", "style", "bpm", "mode", "echo", "density", "bass", "traits"];
+const fields = ["name", "aliases", "family", "style", "bpm", "mode", "echo", "density", "bass", "traits"];
 const artists = writeModule(
     join(ROOT, "skills", "dubwise", "scripts", "artists.mjs"),
     [
@@ -108,7 +109,7 @@ const techniques = new Set(SELECTOR.techniques.map((/** @type {{ id: string }} *
 const moods = new Set(SELECTOR.moods.map((/** @type {{ name: string }} */ mood) => mood.name));
 const wrong = [
     ...SELECTOR.moods.filter((/** @type {{ technique: string }} */ mood) => !techniques.has(mood.technique)),
-    ...SELECTOR.stories.filter((/** @type {{ name: string }} */ story) => !names.has(story.name)),
+    ...[...SELECTOR.stories, ...SELECTOR.favourites].filter((/** @type {{ name: string }} */ x) => !names.has(x.name)),
     ...SELECTOR.feelings.filter(
         (/** @type {{ moods: string[] }} */ feeling) => !feeling.moods.every((m) => moods.has(m)),
     ),
@@ -116,22 +117,44 @@ const wrong = [
         (/** @type {{ technique?: string }} */ entry) => entry.technique && !techniques.has(entry.technique),
     ),
 ];
+// Every text in every language, and every line the selector says in each language.
+const LANGS = ["en", "pt", "es"];
+/** @param {unknown} value @param {string} where */
+function untranslated(value, where) {
+    if (!value || typeof value !== "object") return [];
+    const record = /** @type {Record<string, unknown>} */ (value);
+    if ("en" in record && typeof record.en === "string")
+        return LANGS.filter((lang) => typeof record[lang] !== "string" || (record.en && !record[lang])).map(
+            (lang) => `${where} ${lang}`,
+        );
+    return Object.entries(record).flatMap(([key, inner]) => untranslated(inner, `${where}.${key}`));
+}
+const voices = Object.keys(SELECTOR.lines.en);
+wrong.push(
+    ...untranslated({ ...SELECTOR, lines: undefined }, "selector"),
+    ...LANGS.flatMap((lang) =>
+        voices.filter((voice) => !SELECTOR.lines[lang]?.[voice]?.length).map((voice) => `line ${voice} ${lang}`),
+    ),
+);
 if (wrong.length) {
     console.error(
-        `the selector points at things that are not there:\n${wrong.map((w) => JSON.stringify(w)).join("\n")}`,
+        `the selector's content has gaps:\n${wrong.map((w) => (typeof w === "string" ? w : JSON.stringify(w))).join("\n")}`,
     );
     process.exit(1);
 }
 const said = writeModule(
     join(ROOT, "src", "selector-content.js"),
-    ["What the selector says: its voice, moods, techniques, stories, answers and challenges."],
+    [
+        "What the selector says, in English, Portuguese and Spanish: its voice, moods, techniques, stories, answers,",
+        "challenges and favourites.",
+    ],
     SELECTOR,
     `import("./selector.js").Content`,
     `export const SELECTOR = await decode(DATA);
 `,
 );
 console.log(
-    `${SELECTOR.moods.length} moods, ${SELECTOR.techniques.length} techniques, ${SELECTOR.stories.length} stories, ${SELECTOR.faq.length} answers, ${SELECTOR.challenges.length} challenges: ${said}`,
+    `${SELECTOR.moods.length} moods, ${SELECTOR.techniques.length} techniques, ${SELECTOR.stories.length} stories, ${SELECTOR.faq.length} answers, ${SELECTOR.challenges.length} challenges, ${SELECTOR.favourites.length} favourites, in ${LANGS.join(", ")}: ${said}`,
 );
 
 /**
