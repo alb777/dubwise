@@ -151,11 +151,16 @@ describe("a lost GPU", () => {
 
 describe("the in-browser model", () => {
     it("explains what keeps it from running", () => {
-        assert.match(webgpuProblem({ gpu: false, software: true }), /runs on the processor.*#enable-vulkan/);
-        assert.match(
-            webgpuProblem({ gpu: false, software: false }),
-            /no WebGPU.*#enable-unsafe-webgpu and #enable-vulkan/,
-        );
+        // Never advice that breaks the player's everyday browser: Vulkan only in a separate profile.
+        for (const support of [
+            { gpu: false, software: true },
+            { gpu: false, software: false },
+        ]) {
+            const problem = webgpuProblem(support);
+            assert.match(problem, support.software ? /runs on the processor/ : /no WebGPU/);
+            assert.match(problem, /separate browser profile.*breaks video.*not in your everyday one/);
+            assert.doesNotMatch(problem, /chrome:\/\/flags/);
+        }
         assert.equal(webgpuProblem({ gpu: true, software: false }), "");
     });
 

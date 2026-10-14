@@ -44,7 +44,7 @@ The composer runs in the page. It reads a style, tempo, key, mood, images (rain,
 
 Words it doesn't know go to its own word map, a 4 MB table from [potion-multilingual-128M](https://huggingface.co/minishlab/potion-multilingual-128M) downloaded the first time it's needed. For names and films you can add an AI under **✦ ai**:
 
-1. **In this browser**: Qwen3.5 through [WebLLM](https://github.com/mlc-ai/web-llm), 1.1 GB once. It needs WebGPU; on Linux turn on `chrome://flags/#enable-unsafe-webgpu` and `#enable-vulkan`.
+1. **In this browser**: Qwen3.5 through [WebLLM](https://github.com/mlc-ai/web-llm), 1.1 GB once. It needs WebGPU on the graphics card. On Linux, Chrome and Brave only get that with Vulkan, which on some setups breaks video in the whole browser, so don't turn it on in your everyday profile: start a separate one for dubwise, for example `brave --user-data-dir=$HOME/.config/brave-webgpu --enable-unsafe-webgpu --enable-features=Vulkan --use-angle=vulkan https://alb777.github.io/dubwise/`, or use a server.
 2. **Chrome's built-in model**, when the browser has one.
 3. **A server you choose**: Ollama (`OLLAMA_ORIGINS=https://alb777.github.io ollama serve`), LM Studio, or any OpenAI-compatible service with your key.
 

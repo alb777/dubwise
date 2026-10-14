@@ -181,7 +181,8 @@ let browserModel = null;
 /**
  * Whether WebGPU runs on a graphics card here, and whether it offers 16-bit floats. `software` means it only runs on
  * the processor, as Chrome and Brave on Linux do with #enable-unsafe-webgpu but without Vulkan: far too slow for the
- * model, and the browser's GPU watchdog kills it.
+ * model, and the browser's GPU watchdog kills it. Vulkan can break video in the whole browser on some Linux setups,
+ * so the advice is a separate browser profile for it, never the player's everyday one.
  * @returns {Promise<{ gpu: boolean, f16: boolean, software: boolean }>}
  */
 export async function webgpuSupport() {
@@ -194,9 +195,9 @@ export async function webgpuSupport() {
 /** What stops the in-browser model from running here, or "" when nothing does. @param {{ gpu: boolean, software: boolean }} support */
 export function webgpuProblem({ gpu, software }) {
     if (software)
-        return "WebGPU here runs on the processor, not the graphics card, far too slow for the model; in Chrome or Brave on Linux turn on chrome://flags/#enable-vulkan too, or pick a server";
+        return "WebGPU here runs on the processor, not the graphics card, far too slow for the model; pick a server such as Ollama, or see the README for a separate browser profile with Vulkan (on some Linux setups Vulkan breaks video in the whole browser, so not in your everyday one)";
     if (!gpu)
-        return "this browser has no WebGPU; in Chrome or Brave on Linux turn on chrome://flags/#enable-unsafe-webgpu and #enable-vulkan, or pick a server";
+        return "this browser has no WebGPU; pick a server such as Ollama, or see the README for a separate browser profile with WebGPU and Vulkan (on some Linux setups Vulkan breaks video in the whole browser, so not in your everyday one)";
     return "";
 }
 
