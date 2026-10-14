@@ -885,26 +885,32 @@ function pick(random, items) {
 }
 
 /**
- * Write one bar of bass under a chord.
+ * Write one bar of bass under its chords: one, two or four, each taking an equal part of the bar.
  * @param {() => number} random @param {Style} style @param {Density} density @param {BassMove} move
- * @param {number} chord chord root as a scale degree @param {number} nextChord the next bar's chord root
+ * @param {{ degree: number, sign: string }[]} chords chord roots as scale degrees, with "b" or "#" on a borrowed one
+ * @param {number} nextChord the next bar's first chord root
  * @param {{ root: string, mode: Mode }} key
  */
-function bassBar(random, style, density, move, chord, nextChord, key) {
+function bassBar(random, style, density, move, chords, nextChord, key) {
     let starts = [...pick(random, BASS_RHYTHMS[style])];
     if (density === "sparse")
         starts = starts.filter((s, i) => i === 0 || s === 8 || i === starts.length - 1 || random() < 0.4);
     const tokens = Array(STEPS_PER_BAR).fill(".");
     // Chords on degrees 5 to 7 are played below the tonic, which keeps the bass between E1 and D2.
     const low = (/** @type {number} */ degree) => (degree > 4 ? degree - 7 : degree);
-    const root = low(chord);
     const nextRoot = low(nextChord);
-    const tones = [root, root + 2, root + 4];
-    let current = root;
+    let current = low(chords[0].degree);
+    let segment = -1;
     for (const [i, step] of starts.entries()) {
         const last = i === starts.length - 1;
+        // The chord under this step, and whether this is the first note under it, which lands on its root.
+        const under = Math.floor((step * chords.length) / STEPS_PER_BAR);
+        const root = low(chords[under].degree);
+        const tones = [root, root + 2, root + 4];
+        const first = under !== segment;
+        segment = under;
         let degree;
-        if (i === 0) degree = root;
+        if (first) degree = root;
         else if (last && move === "melodic") degree = nextRoot + (random() < 0.5 ? 1 : -1);
         else if (move === "root") degree = random() < 0.75 ? root : pick(random, [root - 3, root + 7, root + 4]);
         else {
@@ -913,7 +919,9 @@ function bassBar(random, style, density, move, chord, nextChord, key) {
             degree = pick(random, candidates);
         }
         degree = fitBass(Math.max(-3, Math.min(8, degree)), key);
-        tokens[step] = degreeToken(degree);
+        // A borrowed chord, such as the bVII of a major key, flattens or sharpens its root wherever the bass plays it.
+        const borrowed = (((degree - root) % 7) + 7) % 7 === 0 ? chords[under].sign : "";
+        tokens[step] = borrowed + degreeToken(degree);
         current = degree;
         const gap = (starts[i + 1] ?? STEPS_PER_BAR) - step;
         if (gap >= 3 && random() < 0.45) tokens[step + 1] = "-";
@@ -997,10 +1005,11 @@ export function composeIntent(intent, seed, suggestion = {}, take = 0) {
     const swing = intent.style ? STYLE_SWING[style] : (artist?.swing ?? STYLE_SWING[style]);
 
     const { kick, rim, hat, lastHat, skank } = drumLines(style, density, signature);
+    /** A chord token's root degree and its "b" or "#", as "b7M" gives 7 and "b". @param {string} chord */
+    const rootOf = (chord) => ({ degree: Number(chord.replace(/\D/g, "")), sign: /^[b#]/.exec(chord)?.[0] ?? "" });
     const bass = chords.flatMap((bar, b) => {
-        const degree = Number(bar[0].replace(/\D/g, ""));
-        const next = Number(chords[(b + 1) % chords.length][0].replace(/\D/g, ""));
-        return bassBar(random, style, density, move, degree, next, { root, mode });
+        const next = rootOf(chords[(b + 1) % chords.length][0]).degree;
+        return bassBar(random, style, density, move, bar.map(rootOf), next, { root, mode });
     });
     const feedback = { low: 0.35, mid: 0.5, high: 0.65 }[echo];
     const spring = { low: 0.15, mid: 0.3, high: 0.45 }[echo];

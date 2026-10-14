@@ -454,6 +454,32 @@ describe("a reference's own signature", () => {
         assert.ok(takes.every((bpm) => bpm >= 82 && bpm <= 86) && takes.some((bpm) => bpm !== 84), String(takes));
     });
 
+    it("walks the bass under every chord of a bar, as in a canon of four chords a bar", () => {
+        for (const seed of [1, 2, 3, 4, 5]) {
+            const intent = { ...readIntent("a riddim"), artist: { ...SOUND, chords: "1 5 6 3 | 4 1 4 5" } };
+            const { riddim } = parse(composeIntent(intent, seed).text);
+            const bass = riddim?.bass ?? [];
+            for (const [b, bar] of (riddim?.chords ?? []).entries()) {
+                for (const [c, chord] of bar.entries()) {
+                    const notes = bass.slice(b * 16 + c * 4, b * 16 + c * 4 + 4).filter((t) => /\d/.test(t));
+                    if (notes.length) assert.equal(notes[0].replace(/\D/g, ""), chord, `seed ${seed}, bar ${b + 1}`);
+                }
+            }
+        }
+    });
+
+    it("flattens the root of a borrowed chord in the bass, as the bVII of a major key", () => {
+        for (const seed of [1, 2, 3, 4, 5, 6]) {
+            const artist = { ...SOUND, mode: /** @type {const} */ ("major"), chords: "1 | b7M" };
+            const { riddim } = parse(composeIntent({ ...readIntent("a riddim"), artist }, seed).text);
+            const sevens = (riddim?.bass ?? []).slice(16).filter((t) => /^[b#]?7/.test(t));
+            assert.ok(
+                sevens.every((t) => t.startsWith("b7")),
+                `seed ${seed}: ${sevens.join(" ")}`,
+            );
+        }
+    });
+
     it("lets the idea's own words win over it", () => {
         const busy = riddimOf({ density: "busy" });
         assert.ok(!busy.drums.hat.includes(3) || busy.drums.hat.indexOf(3) > 2, "a busy idea plays busy hats");
