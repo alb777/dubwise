@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { ARTISTS } from "../skills/dubwise/scripts/artists.mjs";
-import { compose, readIntent, refine } from "../skills/dubwise/scripts/composer.mjs";
+import { compose, composeIntent, readIntent, refine } from "../skills/dubwise/scripts/composer.mjs";
 import { bassMidi, parse } from "../skills/dubwise/scripts/notation.mjs";
 
 /** Compose, parse, and return both. */
@@ -402,5 +402,62 @@ describe("changing the riddim playing", () => {
         ]) {
             assert.equal(refine(idea, BASE), null, idea);
         }
+    });
+});
+
+describe("a reference's own signature", () => {
+    /** @type {import("../skills/dubwise/scripts/composer.mjs").Artist} A made-up reference with a full signature. */
+    const SOUND = {
+        name: "Test Sound",
+        aliases: ["test sound"],
+        family: "reggae",
+        style: "rockers",
+        bpm: 84,
+        mode: "minor",
+        echo: "high",
+        density: "normal",
+        bass: "root",
+        traits: "a test",
+        root: "G",
+        chords: "1 | 4 | 7 | 1",
+        hat: "flying",
+        rim: "backbeat",
+        skank: "bubble",
+        echoTime: "3/8",
+        swing: 0.12,
+    };
+    /** The riddim for an idea that names the sound, with some of the idea's own words. */
+    const riddimOf = (words = {}, take = 0) => {
+        const { riddim, errors } = parse(
+            composeIntent({ ...readIntent("a riddim"), artist: SOUND, ...words }, 7, {}, take).text,
+        );
+        assert.deepEqual(errors, []);
+        return /** @type {NonNullable<typeof riddim>} */ (riddim);
+    };
+
+    it("plays its key, chords, drum patterns, echo and swing", () => {
+        const riddim = riddimOf();
+        assert.deepEqual(riddim.key, { root: "G", mode: "minor" });
+        assert.deepEqual(riddim.chords, [["1"], ["4"], ["7"], ["1"]]);
+        assert.equal(riddim.bars, 4);
+        assert.equal(riddim.bass.length, 64);
+        assert.deepEqual(riddim.drums.hat.slice(0, 4), [0, 0, 3, 0], "flying cymbals open on the offbeats");
+        assert.deepEqual([riddim.drums.rim[4], riddim.drums.rim[8], riddim.drums.rim[12]], [1, 0, 1], "rim on 2 and 4");
+        assert.deepEqual(riddim.drums.skank.slice(0, 4), [0, 1, 1, 0], "the bubble's double stroke");
+        assert.deepEqual([riddim.echo.num, riddim.echo.den], [3, 8]);
+        assert.equal(riddim.swing, 0.12);
+    });
+
+    it("keeps its tempo exact on the first take and moves around it after", () => {
+        assert.equal(riddimOf().bpm, 84);
+        const takes = [1, 2, 3, 4, 5, 6].map((take) => riddimOf({}, take).bpm);
+        assert.ok(takes.every((bpm) => bpm >= 82 && bpm <= 86) && takes.some((bpm) => bpm !== 84), String(takes));
+    });
+
+    it("lets the idea's own words win over it", () => {
+        const busy = riddimOf({ density: "busy" });
+        assert.ok(!busy.drums.hat.includes(3) || busy.drums.hat.indexOf(3) > 2, "a busy idea plays busy hats");
+        assert.equal(riddimOf({ root: "E" }).key.root, "E");
+        assert.equal(riddimOf({ style: "steppers" }).swing, 0);
     });
 });

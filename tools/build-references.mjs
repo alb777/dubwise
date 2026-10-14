@@ -16,6 +16,7 @@ import { deflateRawSync } from "node:zlib";
 
 // Not the composer: it reads the file this writes.
 import { editDistance } from "../skills/dubwise/scripts/distance.mjs";
+import { MAX_BARS, parse } from "../skills/dubwise/scripts/notation.mjs";
 
 const SOURCE = resolve(process.argv[2] ?? join(homedir(), "dev", "dubwise-data"));
 const ROOT = join(import.meta.dirname, "..");
@@ -30,6 +31,13 @@ const CHOICES = {
     bass: ["root", "melodic"],
     family: ["reggae", "riddim", "rap", "rock", "funk", "classical"],
 };
+/** A reference's own signature, each field optional. */
+const SIGNATURE = {
+    hat: ["eighths", "sixteenths", "offbeat", "flying"],
+    rim: ["three", "backbeat", "pickup"],
+    skank: ["chop", "double", "offbeat", "bubble", "none"],
+    echoTime: ["1/8", "3/16", "1/4", "3/8", "1/2"],
+};
 
 const source = await import(pathToFileURL(join(SOURCE, "artists.mjs")).href);
 const { ARTISTS } = source;
@@ -43,6 +51,19 @@ for (const entry of ARTISTS) {
     }
     if (!Number.isInteger(entry.bpm) || entry.bpm < 50 || entry.bpm > 200) problems.push(`${where}: bpm ${entry.bpm}`);
     if (typeof entry.traits !== "string" || !entry.traits) problems.push(`${where}: no traits`);
+    for (const [field, allowed] of Object.entries(SIGNATURE)) {
+        if (entry[field] !== undefined && !allowed.includes(entry[field]))
+            problems.push(`${where}: ${field} "${entry[field]}"`);
+    }
+    if (entry.root !== undefined && !/^[A-G][#b]?$/.test(entry.root)) problems.push(`${where}: root "${entry.root}"`);
+    if (entry.swing !== undefined && !(entry.swing >= 0 && entry.swing <= 0.4))
+        problems.push(`${where}: swing ${entry.swing}`);
+    if (entry.chords !== undefined) {
+        // The chords line as the notation reads it: degrees diatonic to the key, one to eight bars.
+        const { riddim, errors } = parse(`dubwise 1\nchords ${entry.chords}\n`);
+        if (errors.length || !riddim || riddim.chords.length > MAX_BARS)
+            problems.push(`${where}: chords "${entry.chords}"`);
+    }
     for (const alias of entry.aliases ?? []) {
         // Aliases are matched against the composer's normalized text: lower case, no accents, single spaces.
         if (alias !== alias.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/\s+/g, " ").trim())
@@ -83,7 +104,8 @@ for (const alias of aliases.keys()) {
     }
 }
 
-const fields = ["name", "aliases", "family", "style", "bpm", "mode", "echo", "density", "bass", "traits"];
+const fields = ["name", "aliases", "family", "style", "bpm", "mode", "echo", "density", "bass", "traits", "root"];
+fields.push("chords", "hat", "rim", "skank", "echoTime", "swing");
 const artists = writeModule(
     join(ROOT, "skills", "dubwise", "scripts", "artists.mjs"),
     [

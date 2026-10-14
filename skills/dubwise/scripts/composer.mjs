@@ -19,8 +19,14 @@ export { editDistance };
 /** @typedef {"root" | "melodic"} BassMove */
 /**
  * @typedef {"reggae" | "riddim" | "rap" | "rock" | "funk" | "classical"} Family
+ * @typedef {"eighths" | "sixteenths" | "offbeat" | "flying"} Hat
+ * @typedef {"three" | "backbeat" | "pickup"} Rim
+ * @typedef {"chop" | "double" | "offbeat" | "bubble" | "none"} Skank
  * @typedef {{ name: string, aliases: string[], family: Family, style: Style, bpm: number, mode: Mode, echo: Amount,
- *   density: Density, bass: BassMove, traits: string }} Artist
+ *   density: Density, bass: BassMove, traits: string, root?: string, chords?: string, hat?: Hat, rim?: Rim,
+ *   skank?: Skank, echoTime?: string, swing?: number }} Artist
+ * The optional fields are a reference's own signature: its key root, its chord movement as a notation chords line
+ * (degrees per bar, up to eight bars), its hi-hat, rim and skank patterns, its echo time and its swing.
  * @typedef {{ style?: Style, bpm?: number, tempo?: "slow" | "fast", root?: string, mode?: Mode, echo?: Amount,
  *   density?: Density, bass?: BassMove, artist?: Artist, mixArtist?: Artist, matched: string[],
  *   unknown: string[], guessed: { typed: string, name: string }[], blend?: "lead" | "mix" }} Intent
@@ -915,26 +921,50 @@ function bassBar(random, style, density, move, chord, nextChord, key) {
     return tokens;
 }
 
+/** One bar of each signature pattern, by name. */
+const HATS = {
+    eighths: "x.x.x.x.x.x.x.x.",
+    sixteenths: "XxxxXxxxXxxxXxxx",
+    offbeat: "..x...x...x...x.",
+    flying: "..o...o...o...o.",
+};
+const RIMS = { three: "........x.......", backbeat: "....x.......x...", pickup: "........x.....x." };
+const SKANKS = {
+    chop: "....x.......x...",
+    double: "....x.x.....x.x.",
+    offbeat: "..x...x...x...x.",
+    bubble: ".xx..xx..xx..xx.",
+    none: "................",
+};
+
 /**
- * One bar of each drum for a style at a density. The hat's last bar opens on the last offbeat.
- * @param {Style} style @param {Density} density
+ * One bar of each drum for a style at a density, or in a reference's own patterns. The hat's last bar opens on the
+ * last offbeat.
+ * @param {Style} style @param {Density} density @param {{ hat?: Hat, rim?: Rim, skank?: Skank }} [signature]
  */
-function drumLines(style, density) {
+function drumLines(style, density, signature = {}) {
     const kick = { "one-drop": "........x.......", rockers: "x.......x.......", steppers: "x...x...x...x..." }[style];
-    const rim = density === "busy" && style !== "steppers" ? "........x.....x." : "........x.......";
-    const hat = { sparse: "..x...x...x...x.", normal: "x.x.x.x.x.x.x.x.", busy: "x.xxx.xxx.xxx.xx" }[density];
-    const lastHat = density === "sparse" ? hat : `${hat.slice(0, 12)}o${hat.slice(13)}`;
+    const rim = RIMS[signature.rim ?? (density === "busy" && style !== "steppers" ? "pickup" : "three")];
+    const hat = signature.hat
+        ? HATS[signature.hat]
+        : { sparse: HATS.offbeat, normal: HATS.eighths, busy: "x.xxx.xxx.xxx.xx" }[density];
+    // The last bar opens the hat on beat 4, or on the hit after it when beat 4 is empty, as in offbeat hats.
+    const open = hat[12] !== "." ? 12 : hat[14] !== "." ? 14 : -1;
+    const keep = hat.includes("o") || open < 0 || (density === "sparse" && !signature.hat);
+    const lastHat = keep ? hat : `${hat.slice(0, open)}o${hat.slice(open + 1)}`;
     const skank =
-        style === "steppers" ? "..x...x...x...x." : density === "busy" ? "....x.x.....x.x." : "....x.......x...";
+        SKANKS[signature.skank ?? (style === "steppers" ? "offbeat" : density === "busy" ? "double" : "chop")];
     return { kick, rim, hat, lastHat, skank };
 }
 
 /**
  * Turn an intent into a riddim. A `suggestion`, an AI's reading of the idea, only fills what neither the idea's own
- * words nor a known artist decide.
- * @param {Intent} intent @param {number} seed @param {Reading} [suggestion]
+ * words nor a known artist decide. A named reference's own signature (key, chords, drum patterns, echo time, swing)
+ * plays as it is, unless the idea's words say otherwise; its tempo is exact on the first take, and other takes move
+ * around it.
+ * @param {Intent} intent @param {number} seed @param {Reading} [suggestion] @param {number} [take]
  */
-export function composeIntent(intent, seed, suggestion = {}) {
+export function composeIntent(intent, seed, suggestion = {}, take = 0) {
     const random = mulberry32(seed);
     // With a reading, unknown words linked to a known name take their own role and the reading plays it.
     const blend = Object.keys(suggestion).length ? intent.blend : undefined;
@@ -948,18 +978,25 @@ export function composeIntent(intent, seed, suggestion = {}) {
             ? "one-drop"
             : pick(random, /** @type {const} */ (["one-drop", "rockers", "steppers"])));
     const mode = intent.mode ?? mix?.mode ?? suggestion.mode ?? "minor";
-    const root = intent.root ?? pick(random, mode === "minor" ? MINOR_ROOTS : MAJOR_ROOTS);
+    const drawnRoot = pick(random, mode === "minor" ? MINOR_ROOTS : MAJOR_ROOTS);
+    const root = intent.root ?? mix?.root ?? drawnRoot;
     const shift = intent.tempo === "slow" ? -6 : intent.tempo === "fast" ? 8 : 0;
     // The idea's own tempo words and a named artist set the tempo first; an AI's named tempo counts only without them.
     const moved = intent.tempo || artist ? shift : TEMPO_SHIFT[suggestion.tempo ?? "steady"];
     const center = (artist?.bpm ?? STYLE_BPM[style]) + moved;
-    const bpm = intent.bpm ?? Math.round(Math.min(200, Math.max(50, center + Math.floor(random() * 5) - 2)));
+    const jitter = Math.floor(random() * 5) - 2;
+    const exact = artist && !moved && !take;
+    const bpm = intent.bpm ?? Math.round(Math.min(200, Math.max(50, center + (exact ? 0 : jitter))));
     const density = intent.density ?? artist?.density ?? suggestion.density ?? "normal";
     const echo = intent.echo ?? mix?.echo ?? suggestion.echo ?? "mid";
     const move = intent.bass ?? mix?.bass ?? suggestion.bass ?? (style === "steppers" ? "root" : "melodic");
-    const chords = mix?.name === "dub techno" ? [["1"], ["1"]] : pick(random, PROGRESSIONS[mode]);
+    const drawnChords = pick(random, PROGRESSIONS[mode]);
+    const chords = mix?.chords ? mix.chords.split("|").map((bar) => bar.trim().split(/\s+/)) : drawnChords;
+    // The drums play a reference's own patterns unless the idea asks for a density of its own.
+    const signature = intent.density ? {} : { hat: artist?.hat, rim: artist?.rim, skank: artist?.skank };
+    const swing = intent.style ? STYLE_SWING[style] : (artist?.swing ?? STYLE_SWING[style]);
 
-    const { kick, rim, hat, lastHat, skank } = drumLines(style, density);
+    const { kick, rim, hat, lastHat, skank } = drumLines(style, density, signature);
     const bass = chords.flatMap((bar, b) => {
         const degree = Number(bar[0].replace(/\D/g, ""));
         const next = Number(chords[(b + 1) % chords.length][0].replace(/\D/g, ""));
@@ -967,19 +1004,25 @@ export function composeIntent(intent, seed, suggestion = {}) {
     });
     const feedback = { low: 0.35, mid: 0.5, high: 0.65 }[echo];
     const spring = { low: 0.15, mid: 0.3, high: 0.45 }[echo];
-    const echoTime = style === "steppers" && random() < 0.5 ? "1/4" : "3/16";
+    const drawnEcho = style === "steppers" && random() < 0.5 ? "1/4" : "3/16";
+    const echoTime = mix?.echoTime ?? drawnEcho;
 
+    const bars = chords.length;
+    /** A bar's pattern for every bar, the last one as `last`. @param {string} bar @param {string} [last] */
+    const every = (bar, last = bar) => [...Array(bars - 1).fill(bar), last].join(" | ");
     const chunk = (/** @type {string[]} */ tokens) =>
-        [tokens.slice(0, STEPS_PER_BAR), tokens.slice(STEPS_PER_BAR)].map((bar) => bar.join(" ")).join(" | ");
+        Array.from({ length: bars }, (_, b) => tokens.slice(b * STEPS_PER_BAR, (b + 1) * STEPS_PER_BAR).join(" ")).join(
+            " | ",
+        );
     const text = [
         "dubwise 1",
         `bpm ${bpm}`,
         `key ${root} ${mode}`,
-        STYLE_SWING[style] ? `swing ${STYLE_SWING[style]}` : "",
-        `kick   ${kick} | ${kick}`,
-        `rim    ${rim} | ${rim}`,
-        `hat    ${hat} | ${lastHat}`,
-        `skank  ${skank} | ${skank}`,
+        swing ? `swing ${swing}` : "",
+        `kick   ${every(kick)}`,
+        `rim    ${every(rim)}`,
+        `hat    ${every(hat, lastHat)}`,
+        `skank  ${every(skank)}`,
         `chords ${chords.map((bar) => bar.join(" ")).join(" | ")}`,
         `bass   ${chunk(bass)}`,
         `echo   ${echoTime} ${feedback}`,
@@ -1023,7 +1066,7 @@ export function compose(request, take = 0, reading = null) {
         };
     }
     const intent = readIntent(request);
-    const { text, summary } = composeIntent(intent, hash(normalize(request)) + take * 7919, reading ?? {});
+    const { text, summary } = composeIntent(intent, hash(normalize(request)) + take * 7919, reading ?? {}, take);
     const { errors } = parse(text);
     if (errors.length) throw new Error(`composer wrote an invalid riddim: ${JSON.stringify(errors)}`);
     let note = intent.guessed.length
