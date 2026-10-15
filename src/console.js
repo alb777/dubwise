@@ -93,6 +93,7 @@ export const COMMANDS = `commands
   theme <name>              colours: ${Object.keys(THEMES).join(", ")}
   guide                     open the guide beside the app (or press ?)
   hi, mood, tip, challenge  talk to the selector, or ask: who is King Tubby? what is a dubplate?
+  log, log save, log clear  what happened in this browser: show it, download it or empty it
   help, notation, clear
 
 Describe a riddim in your own words and dubwise writes it, offline:
@@ -113,6 +114,7 @@ or paste a whole riddim that starts with "dubwise 1".`;
  *   | { type: "fx", effect: Effect, on?: boolean }
  *   | { type: "preset", name: typeof PRESETS[number] }
  *   | { type: "theme", name: keyof typeof THEMES }
+ *   | { type: "log", action: "show" | "save" | "clear" }
  *   | { type: "compose" | "prompt", request: string, ai?: boolean }
  *   | { type: "line", line: string }
  *   | { type: "lines", lines: string[] }
@@ -219,6 +221,13 @@ export function parseCommand(input) {
         case "rewind":
             if (!arg) return { type: "fx", effect: "pull-up" };
             break;
+        // "log cabin dub" stays an idea.
+        case "log": {
+            const action = arg.toLowerCase();
+            if (!action) return { type: "log", action: "show" };
+            if (action === "save" || action === "clear") return { type: "log", action };
+            break;
+        }
         case "prompt":
             if (!arg)
                 return error("say what you want, for example: prompt a dark steppers in D minor with lots of echo");

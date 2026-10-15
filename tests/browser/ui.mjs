@@ -323,6 +323,19 @@ await withPage("/", async (page) => {
             (await evaluate("document.getElementById('ai-toggle').dataset.state")) === "error",
     );
     failing = false;
+    await evaluate(type("log"));
+    const logged = (await evaluate(lastLog))?.text ?? "";
+    check(
+        "log shows what the AI read and where it failed",
+        logged.includes("ai read: ai endpoint 127.0.0.1") &&
+            logged.includes("ai failed:") &&
+            logged.includes("503 busy"),
+        logged,
+    );
+    check(
+        "the log is kept in this browser",
+        await evaluate(`JSON.parse(localStorage.getItem("dubwise-log")).some((entry) => entry.event === "visit")`),
+    );
     slow = true;
     await evaluate(type("ai a ghost ship at dawn"));
     await wait(300);

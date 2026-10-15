@@ -35,8 +35,11 @@ show, share, help, notation, clear
 theme <name>, guide       change the colours, open the guide
 hi, mood, tip, challenge  talk to the selector: who is King Tubby? what is a dubplate?
 ai, prompt <idea>         pick an AI reader, or copy a prompt for any chat AI
+log, log save, log clear  what happened in this browser: show it, download it or empty it
 <anything else>           an idea: inspired by King Tubby, steppers at 76 bpm, darker...
 ```
+
+The log keeps what you typed, how each idea was read, how long the AI took and what failed. It stays in your browser until you save it.
 
 ## How ideas become riddims
 

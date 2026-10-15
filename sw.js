@@ -1,6 +1,6 @@
 // Offline support: the whole app is cached on the first visit, then served from the cache.
 // VERSION is a hash of the precached files, stamped by `npm run sw:version`; a test fails when it is stale.
-const VERSION = "dubwise-d66a496eb6";
+const VERSION = "dubwise-89a329ab9f";
 // The in-browser AI model's library, pinned like WEBLLM_URL in src/ai.js. It is cached on first use under a name of
 // its own, so app updates keep it; WebLLM keeps the model itself in caches of its own ("webllm/...").
 const WEBLLM_URL = "https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.86/+esm";
@@ -23,6 +23,7 @@ const PRECACHE = [
     "src/console.js",
     "src/engine.js",
     "src/guide.js",
+    "src/log.js",
     "src/selector.js",
     "src/selector-content.js",
     "src/sequencer.js",

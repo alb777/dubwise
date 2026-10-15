@@ -57,6 +57,10 @@ describe("parseCommand", () => {
         ["ai off", { type: "ai-off" }],
         ["ai Martin Campbell style", { type: "compose", request: "Martin Campbell style", ai: true }],
         ["manual", { type: "guide" }],
+        ["log", { type: "log", action: "show" }],
+        ["log save", { type: "log", action: "save" }],
+        ["LOG Clear", { type: "log", action: "clear" }],
+        ["log cabin dub", { type: "compose", request: "log cabin dub" }],
         ["bpm 76", { type: "line", line: "bpm 76" }],
         ["kick x...x...x...x...", { type: "line", line: "kick x...x...x...x..." }],
         ["bpm 76\nkey D minor", { type: "lines", lines: ["bpm 76", "key D minor"] }],
@@ -140,6 +144,8 @@ describe("help and AI prompt", () => {
             "kill",
             "tape stop",
             "pull up",
+            "log save",
+            "log clear",
         ]) {
             assert.match(COMMANDS, new RegExp(`\\b${word}\\b`));
         }

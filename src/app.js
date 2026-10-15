@@ -39,6 +39,7 @@ import {
 import { aiPrompt, CHANNELS, COMMANDS, PRESETS, parseCommand, THEMES } from "./console.js";
 import { createEngine } from "./engine.js";
 import { GUIDE } from "./guide.js";
+import { createLog, describeEntry } from "./log.js";
 import { createSelector } from "./selector.js";
 import { SELECTOR } from "./selector-content.js";
 import { applyRiddim, createSequencer } from "./sequencer.js";
@@ -50,6 +51,7 @@ import { applyRiddim, createSequencer } from "./sequencer.js";
 /** @typedef {import("./console.js").Effect} Effect */
 /** @typedef {import("./ai.js").Settings} AISettings */
 /** @typedef {import("../skills/dubwise/scripts/intent.mjs").Reading} Reading */
+/** @typedef {import("./log.js").Entry} LogEntry */
 
 const FROM_LINK = "from-link";
 const CUSTOM = "custom";
@@ -126,6 +128,9 @@ const state = {
 /** @type {Engine | null} */
 let engine = null;
 const selector = createSelector(SELECTOR);
+const log = createLog();
+/** Seconds since `started`, a performance.now() reading, to a tenth. @param {number} started */
+const since = (started) => Math.round((performance.now() - started) / 100) / 10;
 /** @type {ReturnType<typeof createSequencer> | null} */
 let sequencer = null;
 /** Steps scheduled ahead of time, shown when the audio clock reaches them. @type {{ step: number, time: number }[]} */
@@ -205,6 +210,13 @@ function remember() {
 /** Compose the last idea at the current take, with the AI's reading if there is one, load it and start playing. */
 function composeAndPlay() {
     const result = compose(state.lastRequest, state.take, state.reading);
+    log.add("riddim", {
+        idea: state.lastRequest,
+        take: state.take,
+        ...(result.understood && { unknown: result.intent.unknown }),
+        reading: state.reading,
+        summary: result.summary,
+    });
     if (!result.understood) return print(result.summary, "err");
     remember();
     loadText(result.text);
@@ -254,6 +266,7 @@ async function composeIdea(request, askAnyway = false) {
             remember();
             loadText(refined.text);
         }
+        log.add("refined", { summary: refined.summary });
         print(refined.summary, "ok");
         if (!sequencer?.playing) togglePlay();
         return;
@@ -269,6 +282,8 @@ async function composeIdea(request, askAnyway = false) {
         asking = controller;
         const line = print("asking the AI…", "dim");
         setAIState("busy");
+        const ai = aiName(state.ai);
+        const started = performance.now();
         try {
             state.reading = await readIdea(state.ai, subject, {
                 signal: controller.signal,
@@ -276,16 +291,19 @@ async function composeIdea(request, askAnyway = false) {
                     line.textContent = `loading the AI model, ${Math.round(fraction * 100)}% (${text.slice(0, 60)})`;
                 },
             });
+            log.add("ai read", { ai, subject, seconds: since(started), reading: state.reading });
             setAIState("on");
             line.remove();
         } catch (error) {
             line.remove();
             if (controller.signal.aborted) {
+                log.add("ai dropped", { ai, subject, seconds: since(started) });
                 // Still the last request means the newer idea did not ask the AI, so nothing keeps it busy.
                 if (asking === controller) setAIState("on");
                 return;
             }
             const { message } = /** @type {Error} */ (error);
+            log.add("ai failed", { ai, subject, seconds: since(started), error: message });
             setAIState("error");
             print(`the AI could not read it (${message}), so dubwise used its own reading`, "err");
         } finally {
@@ -765,6 +783,13 @@ const PROVIDER_NAMES = {
     endpoint: "your server",
 };
 
+/** Which AI reads, for the log: the provider and its model, never a key. @param {AISettings} settings */
+function aiName({ provider, size, url, model }) {
+    if (provider === "browser") return `browser ${BROWSER_MODELS[size].name}`;
+    if (provider === "endpoint") return `endpoint ${url.replace(/^\w+:\/\//, "").split("/")[0]} ${model}`;
+    return provider;
+}
+
 /** @param {"off" | "on" | "busy" | "error"} mode */
 function setAIState(mode) {
     ui.aiToggle.dataset.state = mode;
@@ -859,6 +884,8 @@ async function openAISettings() {
 async function warmUpBrowserModel() {
     const line = print("loading the AI model…", "dim");
     setAIState("busy");
+    const ai = aiName(state.ai);
+    const started = performance.now();
     try {
         await prepareBrowserModel(state.ai.size, (fraction, text) => {
             line.textContent =
@@ -866,13 +893,16 @@ async function warmUpBrowserModel() {
                     ? "warming up the AI model…"
                     : `loading the AI model, ${Math.round(fraction * 100)}%`;
         });
+        log.add("ai loaded", { ai, seconds: since(started) });
         line.textContent = "the AI model is loaded and ready";
         line.className = "ok";
         setAIState("on");
     } catch (error) {
+        const { message } = /** @type {Error} */ (error);
+        log.add("ai load failed", { ai, seconds: since(started), error: message });
         line.remove();
         setAIState("error");
-        print(`the AI model did not load: ${/** @type {Error} */ (error).message}`, "err");
+        print(`the AI model did not load: ${message}`, "err");
     }
 }
 
@@ -910,8 +940,19 @@ async function copy(text, done) {
     }
 }
 
+/** Download the log as a file, to look at on another computer. @param {LogEntry[]} entries */
+function saveLog(entries) {
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(new Blob([JSON.stringify(entries, null, 1)], { type: "application/json" }));
+    link.download = `dubwise-log-${new Date().toISOString().slice(0, 10)}.json`;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    print(`${entries.length} entries go to ${link.download} in your downloads`, "ok");
+}
+
 /** A line typed in the console: talk for the selector, else a command or an idea. @param {string} input */
 function execute(input) {
+    if (input.trim()) log.add("typed", { text: input });
     const said = selector.reply(input);
     if (!said) return run(input);
     print(`> ${input}`, "in");
@@ -1018,6 +1059,15 @@ function run(input) {
         case "clear":
             ui.log.replaceChildren();
             return;
+        case "log": {
+            if (command.action === "clear") {
+                log.clear();
+                return print("the log is empty", "ok");
+            }
+            const entries = log.entries();
+            if (command.action === "save") return saveLog(entries);
+            return print(entries.slice(-20).map(describeEntry).join("\n") || "the log is empty", "dim");
+        }
         case "line": {
             const result = setLine(state.text, command.line);
             if (!result.riddim) return printErrors(result.errors.map((e) => ({ line: 0, message: e.message })));
@@ -1051,6 +1101,13 @@ function run(input) {
 
 // ----- wiring
 
+log.add("visit", { agent: navigator.userAgent, ai: aiName(state.ai) });
+window.addEventListener("error", (event) =>
+    log.add("page error", { error: event.message, where: `${event.filename}:${event.lineno}` }),
+);
+window.addEventListener("unhandledrejection", (event) =>
+    log.add("page error", { error: String(event.reason?.message ?? event.reason) }),
+);
 buildStrips();
 buildPads();
 buildGuide();
