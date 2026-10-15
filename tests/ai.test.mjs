@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
 
 import { READING_SCHEMA } from "../skills/dubwise/scripts/intent.mjs";
-import { asError, onLiveGpu, readWithEndpoint, WEBLLM_URL, webgpuProblem } from "../src/ai.js";
+import { answerWithin, asError, onLiveGpu, readWithEndpoint, WEBLLM_URL, webgpuProblem } from "../src/ai.js";
 
 const ANSWER = {
     reading: "spy film: tense, dark",
@@ -97,6 +97,49 @@ describe("failures", () => {
         for (const silent of [undefined, null, "", {}, new Error("")]) {
             assert.equal(asError(silent).message, "the model failed without saying why", String(silent));
         }
+    });
+});
+
+describe("waiting for an answer", () => {
+    const never = () => new Promise(() => {});
+
+    it("passes the answer on and stops nothing", async () => {
+        const stops = [];
+        assert.equal(await answerWithin(Promise.resolve("reading"), 1, undefined, (why) => stops.push(why)), "reading");
+        await assert.rejects(
+            answerWithin(Promise.reject(new Error("bad form")), 1, undefined, () => {}),
+            /bad form/,
+        );
+        assert.deepEqual(stops, []);
+    });
+
+    it("gives up on an answer that hangs and says so", async () => {
+        const stops = [];
+        await assert.rejects(
+            answerWithin(never(), 0.02, undefined, (why) => stops.push(why)),
+            /no answer after 0.02 seconds/,
+        );
+        assert.deepEqual(stops, ["timeout"]);
+    });
+
+    it("gives up when a newer idea comes in, before or while it waits", async () => {
+        const stops = [];
+        const controller = new AbortController();
+        const waiting = answerWithin(never(), 1, controller.signal, (why) => stops.push(why));
+        controller.abort();
+        await assert.rejects(waiting, { name: "AbortError" });
+        await assert.rejects(
+            answerWithin(never(), 1, controller.signal, (why) => stops.push(why)),
+            { name: "AbortError" },
+        );
+        assert.deepEqual(stops, ["abort", "abort"]);
+    });
+
+    it("leaves no timer behind once answered", async () => {
+        const stops = [];
+        await answerWithin(Promise.resolve("reading"), 0.02, undefined, (why) => stops.push(why));
+        await new Promise((resolve) => setTimeout(resolve, 40));
+        assert.deepEqual(stops, []);
     });
 });
 

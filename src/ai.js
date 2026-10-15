@@ -99,6 +99,48 @@ async function failure(response) {
     return new Error(`${response.status} ${String(detail).slice(0, 160)}`.trim());
 }
 
+/** How long a loaded model may take to answer. A reading takes two or three seconds on a laptop's graphics card. */
+export const ANSWER_SECONDS = 30;
+/** How long the in-browser model's first answer may take, while the graphics card compiles its shaders. */
+const WARM_UP_SECONDS = 120;
+
+/**
+ * A model's answer, or a failure once `seconds` pass or `signal` aborts, as when a newer idea comes in. Either way
+ * `stop` hears why first, so the model can stop working on an answer nobody waits for any more.
+ * @template T
+ * @param {Promise<T>} answer @param {number} seconds @param {AbortSignal | undefined} signal
+ * @param {(why: "timeout" | "abort") => void} stop
+ * @returns {Promise<T>}
+ */
+export function answerWithin(answer, seconds, signal, stop) {
+    return new Promise((resolve, reject) => {
+        /** @param {"timeout" | "abort"} why @param {unknown} error */
+        const cut = (why, error) => {
+            settle();
+            stop(why);
+            reject(error);
+        };
+        const onAbort = () => cut("abort", signal?.reason);
+        const timer = setTimeout(() => cut("timeout", new Error(`no answer after ${seconds} seconds`)), seconds * 1000);
+        const settle = () => {
+            clearTimeout(timer);
+            signal?.removeEventListener("abort", onAbort);
+        };
+        if (signal?.aborted) return cut("abort", signal.reason);
+        signal?.addEventListener("abort", onAbort, { once: true });
+        answer.then(
+            (value) => {
+                settle();
+                resolve(value);
+            },
+            (error) => {
+                settle();
+                reject(error);
+            },
+        );
+    });
+}
+
 /**
  * Ask an OpenAI-compatible chat API to read an idea. It asks for the JSON schema first and falls back to plain JSON
  * mode for servers that turn schemas down with a 400.
@@ -164,7 +206,13 @@ async function readWithChrome(idea, signal, onProgress) {
     });
     const session = await chromeSession.clone();
     try {
-        const answer = await session.prompt(`Idea: ${idea}`, { responseConstraint: READING_SCHEMA, signal });
+        // Giving up is enough to stop it: the session is destroyed below, which ends its answer too.
+        const answer = await answerWithin(
+            session.prompt(`Idea: ${idea}`, { responseConstraint: READING_SCHEMA, signal }),
+            ANSWER_SECONDS,
+            signal,
+            () => {},
+        );
         const reading = sanitizeReading(answer);
         if (!reading) throw new Error("the answer did not fit the form");
         return reading;
@@ -225,7 +273,13 @@ export function loadBrowserModel(size, onProgress) {
             // The GPU compiles its shaders on the first answer, about ten seconds. A two-token answer in the same
             // form does that now, so the first real idea is read in two or three seconds.
             onProgress?.(1, "warming up");
-            await engine.chat.completions.create(request("warm up", 2));
+            // Giving up is enough to stop it: the worker is terminated below.
+            await answerWithin(
+                engine.chat.completions.create(request("warm up", 2)),
+                WARM_UP_SECONDS,
+                undefined,
+                () => {},
+            );
             return engine;
         } catch (error) {
             worker?.terminate();
@@ -247,10 +301,15 @@ export function loadBrowserModel(size, onProgress) {
 /** Chrome turns the GPU off for good after a few crashes in a short time, so a lost GPU is tried again once a visit. */
 let gpuRetries = 1;
 
-/** Let go of the loaded model and its worker, as when the GPU that held them is gone; say whether to try again. */
-function dropBrowserModel() {
+/** Let go of the loaded model and its worker; the next idea loads it again from the cache. */
+function unloadBrowserModel() {
     browserModel?.stop();
     browserModel = null;
+}
+
+/** Let go of the model as when the GPU that held it is gone, and say whether to try again. */
+function dropBrowserModel() {
+    unloadBrowserModel();
     return gpuRetries-- > 0;
 }
 
@@ -314,11 +373,22 @@ export async function browserModelCached(size) {
     }
 }
 
-/** @param {ModelSize} size @param {string} idea @param {Progress} [onProgress] @returns {Promise<Reading>} */
-async function readWithBrowser(size, idea, onProgress) {
+/**
+ * @param {ModelSize} size @param {string} idea @param {AbortSignal} [signal] @param {Progress} [onProgress]
+ * @returns {Promise<Reading>}
+ */
+async function readWithBrowser(size, idea, signal, onProgress) {
     const reply = await onLiveGpu(async () => {
         const engine = await loadBrowserModel(size, onProgress);
-        return engine.chat.completions.create(request(idea, 120));
+        // A newer idea may have come in while the model loaded, and then this one is not wanted any more.
+        signal?.throwIfAborted();
+        // WebLLM answers one request at a time, so an answer that hangs would hold up every idea after it. A newer
+        // idea interrupts it. One that takes far too long takes the model with it, since a graphics card stuck in a
+        // step never sees the interrupt, and the next idea loads it again from the cache.
+        return answerWithin(engine.chat.completions.create(request(idea, 120)), ANSWER_SECONDS, signal, (why) => {
+            if (why === "abort") engine.interruptGenerate();
+            else unloadBrowserModel();
+        });
     }, dropBrowserModel);
     const reading = sanitizeReading(reply?.choices?.[0]?.message?.content);
     if (!reading) throw new Error("the answer did not fit the form");
@@ -370,7 +440,7 @@ function readWith(settings, idea, signal, onProgress) {
             signal ? AbortSignal.any([signal, timeout]) : timeout,
         );
     }
-    if (settings.provider === "browser") return readWithBrowser(settings.size, idea, onProgress);
+    if (settings.provider === "browser") return readWithBrowser(settings.size, idea, signal, onProgress);
     if (settings.provider === "chrome") return readWithChrome(idea, signal, onProgress);
     throw new Error("the AI is off");
 }

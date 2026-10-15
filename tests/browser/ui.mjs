@@ -18,6 +18,8 @@ const SPY_FILM = {
 };
 let aiRequests = 0;
 let failing = false;
+/** Answers after a pause while set, so a newer idea can come in while the AI is still reading. */
+let slow = false;
 /** The last idea the app asked the AI about. */
 let askedAbout = "";
 const aiServer = createServer((request, response) => {
@@ -34,8 +36,12 @@ const aiServer = createServer((request, response) => {
     });
     if (failing)
         return response.writeHead(503, { "content-type": "application/json" }).end('{"error":{"message":"busy"}}');
-    response.writeHead(200, { "content-type": "application/json" });
-    response.end(JSON.stringify({ choices: [{ message: { content: JSON.stringify(SPY_FILM) } }] }));
+    const answer = () => {
+        response.writeHead(200, { "content-type": "application/json" });
+        response.end(JSON.stringify({ choices: [{ message: { content: JSON.stringify(SPY_FILM) } }] }));
+    };
+    if (slow) setTimeout(answer, 1500);
+    else answer();
 });
 await new Promise((resolve) => aiServer.listen(0, "127.0.0.1", resolve));
 const aiUrl = `http://127.0.0.1:${aiServer.address().port}/v1`;
@@ -317,6 +323,18 @@ await withPage("/", async (page) => {
             (await evaluate("document.getElementById('ai-toggle').dataset.state")) === "error",
     );
     failing = false;
+    slow = true;
+    await evaluate(type("ai a ghost ship at dawn"));
+    await wait(300);
+    await evaluate(type("darker"));
+    await wait(300);
+    slow = false;
+    check(
+        "a newer idea drops the AI's answer and leaves nothing waiting",
+        (await evaluate("document.getElementById('ai-toggle').dataset.state")) === "on" &&
+            !(await evaluate(lines("dim"))).includes("asking the AI…"),
+        await evaluate(lines("dim")),
+    );
     await evaluate(type("ai off"));
     check("ai off turns it off", (await evaluate("document.getElementById('ai-toggle').dataset.state")) === "off");
     await evaluate(type("a volcano waking up"));

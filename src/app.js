@@ -279,13 +279,15 @@ async function composeIdea(request, askAnyway = false) {
             setAIState("on");
             line.remove();
         } catch (error) {
-            if (controller.signal.aborted) return;
-            setAIState("error");
             line.remove();
-            print(
-                `the AI could not read it (${/** @type {Error} */ (error).message}), so dubwise used its own reading`,
-                "err",
-            );
+            if (controller.signal.aborted) {
+                // Still the last request means the newer idea did not ask the AI, so nothing keeps it busy.
+                if (asking === controller) setAIState("on");
+                return;
+            }
+            const { message } = /** @type {Error} */ (error);
+            setAIState("error");
+            print(`the AI could not read it (${message}), so dubwise used its own reading`, "err");
         } finally {
             if (asking === controller) asking = null;
         }
