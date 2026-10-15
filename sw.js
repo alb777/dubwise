@@ -40,7 +40,10 @@ const PRECACHE = [
 ];
 
 self.addEventListener("install", (event) => {
-    event.waitUntil(caches.open(VERSION).then((cache) => cache.addAll(PRECACHE)));
+    // Straight from the network: the browser's HTTP cache may still hold the last version's files for ten minutes
+    // (GitHub Pages sends max-age=600), and a new version must never be put together from old ones.
+    const fresh = PRECACHE.map((path) => new Request(path, { cache: "reload" }));
+    event.waitUntil(caches.open(VERSION).then((cache) => cache.addAll(fresh)));
     self.skipWaiting();
 });
 

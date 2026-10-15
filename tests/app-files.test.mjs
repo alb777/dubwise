@@ -35,6 +35,12 @@ describe("offline app", () => {
         assert.equal(stamped, contentVersion(sw), "a precached file changed: run npm run sw:version");
     });
 
+    it("fills a new version's cache from the network, never from the browser's HTTP cache of the last one", () => {
+        const install = /addEventListener\("install"[\s\S]*?\n\}\);/.exec(sw)[0];
+        assert.match(install, /new Request\(path, \{ cache: "reload" \}\)/);
+        assert.match(install, /cache\.addAll\(fresh\)/);
+    });
+
     it("names the word map's cache by its content, so a rebuilt map replaces the old one", () => {
         const stamped = /const LEXICON_CACHE = "([^"]*)";/.exec(sw)[1];
         assert.equal(stamped, lexiconVersion(), "the word map changed: run npm run sw:version");
