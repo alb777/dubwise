@@ -5,7 +5,15 @@ import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
 
 import { READING_SCHEMA } from "../skills/dubwise/scripts/intent.mjs";
-import { answerWithin, asError, onLiveGpu, readWithEndpoint, WEBLLM_URL, webgpuProblem } from "../src/ai.js";
+import {
+    answerWithin,
+    asError,
+    onLiveGpu,
+    readWithEndpoint,
+    WEBLLM_URL,
+    webgpuProblem,
+    whileMoving,
+} from "../src/ai.js";
 
 const ANSWER = {
     reading: "spy film: tense, dark",
@@ -140,6 +148,56 @@ describe("waiting for an answer", () => {
         await answerWithin(Promise.resolve("reading"), 0.02, undefined, (why) => stops.push(why));
         await new Promise((resolve) => setTimeout(resolve, 40));
         assert.deepEqual(stops, []);
+    });
+});
+
+describe("loading the model", () => {
+    const never = () => new Promise(() => {});
+    const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    it("waits as long as it keeps moving, longer than any one silence allows", async () => {
+        const loaded = await whileMoving(
+            async (moved) => {
+                for (let i = 0; i < 5; i++) {
+                    await pause(15);
+                    moved();
+                }
+                return "engine";
+            },
+            { first: 0.03, next: 0.03 },
+            "loading the model",
+        );
+        assert.equal(loaded, "engine");
+    });
+
+    it("gives up when nothing comes at all, as when the worker never hears the request", async () => {
+        await assert.rejects(
+            whileMoving(never, { first: 0.02, next: 1 }, "loading the model"),
+            /loading the model stopped: nothing moved for 0.02 seconds/,
+        );
+    });
+
+    it("gives up when it stops moving halfway", async () => {
+        await assert.rejects(
+            whileMoving(
+                async (moved) => {
+                    moved();
+                    return never();
+                },
+                { first: 1, next: 0.02 },
+                "loading the model",
+            ),
+            /nothing moved for 0.02 seconds/,
+        );
+    });
+
+    it("passes a failure on as it is, and leaves no timer behind", async () => {
+        await assert.rejects(
+            whileMoving(() => Promise.reject(new Error("cache full")), { first: 0.02, next: 0.02 }, "loading"),
+            /cache full/,
+        );
+        assert.equal(await whileMoving(async () => "engine", { first: 0.02, next: 0.02 }, "loading"), "engine");
+        await pause(40);
     });
 });
 

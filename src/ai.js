@@ -105,6 +105,50 @@ export const ANSWER_SECONDS = 30;
 const WARM_UP_SECONDS = 120;
 
 /**
+ * How long loading the in-browser model may go without a progress report: to the first one, which comes once the
+ * library and the model's code are in, and then between two. WebLLM reports each part of the model once it is in,
+ * four parts downloading at a time, so a slow connection can go minutes between two.
+ */
+const LOAD_SILENCE = { first: 60, next: 300 };
+
+/**
+ * Wait for `work`, which calls the `moved` it is handed as it makes progress, and fail once it goes silent for too
+ * long: a download may take minutes, but one that stops moving would otherwise keep the player waiting forever.
+ * @template T
+ * @param {(moved: () => void) => Promise<T>} work
+ * @param {{ first: number, next: number }} seconds of silence allowed before the first report and between two
+ * @param {string} what what stops, for the error
+ * @returns {Promise<T>}
+ */
+export function whileMoving(work, seconds, what) {
+    return new Promise((resolve, reject) => {
+        /** @type {ReturnType<typeof setTimeout> | undefined} */
+        let timer;
+        /** @param {number} limit */
+        const wait = (limit) => {
+            clearTimeout(timer);
+            timer = setTimeout(
+                () => reject(new Error(`${what} stopped: nothing moved for ${limit} seconds`)),
+                limit * 1000,
+            );
+        };
+        wait(seconds.first);
+        Promise.resolve()
+            .then(() => work(() => wait(seconds.next)))
+            .then(
+                (value) => {
+                    clearTimeout(timer);
+                    resolve(value);
+                },
+                (error) => {
+                    clearTimeout(timer);
+                    reject(error);
+                },
+            );
+    });
+}
+
+/**
  * A model's answer, or a failure once `seconds` pass or `signal` aborts, as when a newer idea comes in. Either way
  * `stop` hears why first, so the model can stop working on an answer nobody waits for any more.
  * @template T
@@ -266,10 +310,19 @@ export function loadBrowserModel(size, onProgress) {
         worker = new Worker(new URL("./ai-worker.js", import.meta.url), { type: "module" });
         const id = f16 ? BROWSER_MODELS[size].f16 : BROWSER_MODELS[size].f32;
         try {
-            const engine = await webllm.CreateWebWorkerMLCEngine(worker, id, {
-                /** @param {{ progress: number, text: string }} report */
-                initProgressCallback: (report) => onProgress?.(report.progress, report.text),
-            });
+            // Giving up is enough to stop it: the worker is terminated below.
+            const engine = await whileMoving(
+                (moved) =>
+                    webllm.CreateWebWorkerMLCEngine(worker, id, {
+                        /** @param {{ progress: number, text: string }} report */
+                        initProgressCallback: (report) => {
+                            moved();
+                            onProgress?.(report.progress, report.text);
+                        },
+                    }),
+                LOAD_SILENCE,
+                "loading the model",
+            );
             // The GPU compiles its shaders on the first answer, about ten seconds. A two-token answer in the same
             // form does that now, so the first real idea is read in two or three seconds.
             onProgress?.(1, "warming up");
