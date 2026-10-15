@@ -7,7 +7,7 @@
 import { mulberry32 } from "../skills/dubwise/scripts/composer.mjs";
 import { midiToFrequency } from "../skills/dubwise/scripts/notation.mjs";
 
-export const TRACKS = /** @type {const} */ (["kick", "rim", "hat", "bass", "skank", "siren"]);
+export const TRACKS = /** @type {const} */ (["kick", "rim", "hat", "bass", "skank", "siren", "keys"]);
 
 /** @typedef {typeof TRACKS[number]} Track */
 /**
@@ -25,6 +25,7 @@ const MIX = /** @type {Record<Track, { level: number, echo: number, spring: numb
     bass: { level: 0.85, echo: 0, spring: 0 },
     skank: { level: 0.42, echo: 0.22, spring: 0.3 },
     siren: { level: 0.3, echo: 0.55, spring: 0.4 },
+    keys: { level: 0.45, echo: 0.3, spring: 0.3 },
 });
 
 const FILTER_LOW = 20000;
@@ -472,6 +473,84 @@ export function createEngine(context, { seed = 7 } = {}) {
         };
     })();
 
+    // The melodica is played live from the keyboard, a note for each key held: two reeds a hair apart through a
+    // nasal band, a breath as the note starts and a slow vibrato.
+    const keys = (() => {
+        /** @type {Map<number, { sources: OscillatorNode[], release: GainNode }>} */
+        const held = new Map();
+
+        /** @param {number} midi @param {number} time */
+        function up(midi, time) {
+            const note = held.get(midi);
+            if (!note) return;
+            held.delete(midi);
+            // The release fades a gain of its own, so a key let go during the attack still fades from where it is.
+            // The anchor keeps node-web-audio-api from evaluating the fade before the key is let go.
+            note.release.gain.setValueAtTime(1, time);
+            note.release.gain.setTargetAtTime(0, time, 0.04);
+            for (const source of note.sources) source.stop(time + 0.4);
+        }
+
+        return {
+            /** Press a key. @param {number} midi @param {number} [time] */
+            down(midi, time = context.currentTime) {
+                if (held.has(midi)) return;
+                const frequency = midiToFrequency(midi);
+                const nasal = context.createBiquadFilter();
+                nasal.type = "peaking";
+                nasal.frequency.value = 1300;
+                nasal.Q.value = 1.2;
+                nasal.gain.value = 5;
+                const tone = context.createBiquadFilter();
+                tone.type = "lowpass";
+                tone.frequency.value = Math.min(frequency * 8, 6000);
+                const amp = context.createGain();
+                amp.gain.setValueAtTime(0.0001, time);
+                amp.gain.exponentialRampToValueAtTime(0.35, time + 0.035);
+                const release = context.createGain();
+                nasal.connect(tone).connect(amp).connect(release).connect(channels.keys.input);
+                const vibrato = context.createOscillator();
+                vibrato.frequency.value = 5;
+                const cents = context.createGain();
+                cents.gain.value = 6;
+                vibrato.connect(cents);
+                const sources = [vibrato];
+                for (const [type, detune, gain] of /** @type {const} */ ([
+                    ["sawtooth", 0, 0.6],
+                    ["square", 5, 0.4],
+                ])) {
+                    const reed = context.createOscillator();
+                    reed.type = type;
+                    reed.frequency.value = frequency;
+                    reed.detune.value = detune;
+                    cents.connect(reed.detune);
+                    const mix = context.createGain();
+                    mix.gain.value = gain;
+                    reed.connect(mix).connect(nasal);
+                    sources.push(reed);
+                }
+                for (const source of sources) source.start(time);
+                const breath = context.createBiquadFilter();
+                breath.type = "bandpass";
+                breath.frequency.value = 2400;
+                breath.Q.value = 1.5;
+                noiseSource(time, 0.1)
+                    .connect(breath)
+                    .connect(envelope(time, 0.08, 0.09))
+                    .connect(release);
+                held.set(midi, { sources, release });
+            },
+            /** Let go of a key. @param {number} midi @param {number} [time] */
+            up(midi, time = context.currentTime) {
+                up(midi, time);
+            },
+            /** Let go of every key, as when the page loses the keyboard. @param {number} [time] */
+            release(time = context.currentTime) {
+                for (const midi of [...held.keys()]) up(midi, time);
+            },
+        };
+    })();
+
     /** The echo as last set, which an echo spin returns to. */
     const echoSettings = { seconds: 0.375, amount: 0.5 };
     /** When the deck is free for another move. */
@@ -480,6 +559,7 @@ export function createEngine(context, { seed = 7 } = {}) {
     return {
         context,
         siren,
+        keys,
         trigger,
         /** @param {Track} track @param {boolean} muted @param {number} [time] */
         setMute(track, muted, time = context.currentTime) {

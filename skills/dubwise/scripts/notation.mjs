@@ -376,6 +376,12 @@ function degreeSemitones(key, degree, accidental) {
     return scale[degree - 1] + (accidental === "#" ? 1 : accidental === "b" ? -1 : 0);
 }
 
+/** The pitch classes of a key's scale, root first, with C as 0. @param {Key} key */
+export function scaleNotes(key) {
+    const root = rootSemitone(key);
+    return SCALES[key.mode].map((step) => (root + step + 12) % 12);
+}
+
 /** @param {number} midi */
 export function midiToFrequency(midi) {
     return 440 * 2 ** ((midi - 69) / 12);

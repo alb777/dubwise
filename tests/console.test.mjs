@@ -57,6 +57,11 @@ describe("parseCommand", () => {
         ["ai off", { type: "ai-off" }],
         ["ai Martin Campbell style", { type: "compose", request: "Martin Campbell style", ai: true }],
         ["manual", { type: "guide" }],
+        ["keys", { type: "keys" }],
+        ["keys off", { type: "keys", on: false }],
+        ["Keys ON", { type: "keys", on: true }],
+        ["keys to the kingdom", { type: "compose", request: "keys to the kingdom" }],
+        ["mute keys", { type: "mute", channel: "keys", on: true }],
         ["log", { type: "log", action: "show" }],
         ["log save", { type: "log", action: "save" }],
         ["LOG Clear", { type: "log", action: "clear" }],
@@ -146,6 +151,7 @@ describe("help and AI prompt", () => {
             "pull up",
             "log save",
             "log clear",
+            "keys",
         ]) {
             assert.match(COMMANDS, new RegExp(`\\b${word}\\b`));
         }

@@ -17,6 +17,7 @@ import {
     parse,
     SPEC,
     STEPS_PER_BAR,
+    scaleNotes,
     serialize,
     setLine,
     stepAt,
@@ -80,6 +81,13 @@ const ui = {
     volume: /** @type {HTMLInputElement} */ (byId("volume")),
     siren: byId("siren"),
     pads: byId("pads"),
+    keysToggle: byId("keys-toggle"),
+    keys: byId("keys"),
+    keysSide: byId("keys-side"),
+    keyboard: byId("keyboard"),
+    octave: byId("octave"),
+    octaveDown: /** @type {HTMLButtonElement} */ (byId("octave-down")),
+    octaveUp: /** @type {HTMLButtonElement} */ (byId("octave-up")),
     log: byId("log"),
     prompt: /** @type {HTMLFormElement} */ (byId("prompt")),
     command: /** @type {HTMLTextAreaElement} */ (byId("command")),
@@ -395,6 +403,7 @@ function render() {
     showOutputs();
     renderBars();
     renderGrid();
+    markKeys();
 }
 
 function showOutputs() {
@@ -521,7 +530,7 @@ function animate() {
 }
 
 function renderStrips() {
-    for (const strip of ui.strips.querySelectorAll(".strip")) {
+    for (const strip of document.querySelectorAll(".strip")) {
         const channel = /** @type {Channel} */ (/** @type {HTMLElement} */ (strip).dataset.channel);
         strip.querySelector(".mute")?.setAttribute("aria-pressed", String(state.muted.has(channel)));
         strip.querySelector(".solo")?.setAttribute("aria-pressed", String(state.solo === channel));
@@ -567,7 +576,9 @@ function buildStrips() {
         const throwButton = button("throw", "throw", `hold to send ${channel} into the echo`);
         holdable(throwButton, (on) => audio().setThrow(channel, on));
         strip.append(name, mute, solo, throwButton);
-        ui.strips.append(strip);
+        // The keys' strip sits on the keyboard, beside what it plays.
+        if (channel === "keys") ui.keysSide.prepend(strip);
+        else ui.strips.append(strip);
     }
 }
 
@@ -647,6 +658,157 @@ function deckMove(effect) {
         },
         (end - live.context.currentTime) * 1000,
     );
+}
+
+// ----- melodica keys
+
+const KEYS_OPEN = "dubwise-keys";
+/** The black keys, as semitones above a C. */
+const BLACK = new Set([1, 3, 6, 8, 10]);
+/**
+ * Computer keys that play, by their place on the keyboard rather than their letter, so every layout plays alike:
+ * A to K are the white keys of an octave and W E T Y U the black keys between them.
+ */
+const KEY_CODES = [
+    "KeyA",
+    "KeyW",
+    "KeyS",
+    "KeyE",
+    "KeyD",
+    "KeyF",
+    "KeyT",
+    "KeyG",
+    "KeyY",
+    "KeyH",
+    "KeyU",
+    "KeyJ",
+    "KeyK",
+    "KeyO",
+    "KeyL",
+    "KeyP",
+    "Semicolon",
+    "Quote",
+];
+const LOWEST_C = 36;
+const HIGHEST_C = 72;
+
+const keyboard = {
+    /** The MIDI note of the lowest key, a C. */
+    base: 60,
+    /** How many pointers and computer keys hold each note, so one letting go does not cut another. @type {Map<number, number>} */
+    holds: new Map(),
+    /** The note each pointer holds, or null while it slides off the keys. @type {Map<number, number | null>} */
+    pointers: new Map(),
+    /** The note each computer key holds. @type {Map<string, number>} */
+    codes: new Map(),
+};
+
+/** Two octaves and the C above. Phones leave out the second octave, the "upper" keys. */
+function buildKeyboard() {
+    let whites = 0;
+    for (let offset = 0; offset <= 24; offset++) {
+        const key = document.createElement("div");
+        const black = BLACK.has(offset % 12);
+        key.className = `key ${black ? "black" : "white"}${offset > 12 ? " upper" : ""}`;
+        key.dataset.offset = String(offset);
+        // A white key takes two half columns; a black one the two around the line between two white keys.
+        key.style.gridColumn = `${black ? whites * 2 : whites * 2 + 1} / span 2`;
+        if (!black) whites++;
+        ui.keyboard.append(key);
+    }
+}
+
+/** Name the octave and the Cs, and mark the notes of the riddim's key. */
+function markKeys() {
+    const scale = scaleNotes(state.riddim.key);
+    for (const key of ui.keyboard.querySelectorAll(".key")) {
+        const element = /** @type {HTMLElement} */ (key);
+        const midi = keyboard.base + Number(element.dataset.offset);
+        element.dataset.scale = String(scale.includes(midi % 12));
+        element.dataset.root = String(midi % 12 === scale[0]);
+        element.textContent = midi % 12 === 0 ? `C${midi / 12 - 1}` : "";
+    }
+    ui.octave.textContent = `C${keyboard.base / 12 - 1}`;
+    ui.octaveDown.disabled = keyboard.base <= LOWEST_C;
+    ui.octaveUp.disabled = keyboard.base >= HIGHEST_C;
+}
+
+/** Press or let go of a note, which sounds while anything still holds it. @param {number} midi @param {boolean} on */
+function playKey(midi, on) {
+    const holds = (keyboard.holds.get(midi) ?? 0) + (on ? 1 : -1);
+    if (holds > 0) keyboard.holds.set(midi, holds);
+    else keyboard.holds.delete(midi);
+    if (on ? holds !== 1 : holds !== 0) return;
+    const live = audio();
+    if (on) live.keys.down(midi);
+    else live.keys.up(midi);
+    ui.keyboard.querySelector(`[data-offset="${midi - keyboard.base}"]`)?.classList.toggle("down", on);
+}
+
+/** Let go of every key, as when the window loses the keyboard or the octave moves. */
+function releaseKeys() {
+    engine?.keys.release();
+    keyboard.holds.clear();
+    keyboard.pointers.clear();
+    keyboard.codes.clear();
+    for (const key of ui.keyboard.querySelectorAll(".down")) key.classList.remove("down");
+}
+
+/** @param {-1 | 1} step */
+function shiftOctave(step) {
+    const base = Math.min(HIGHEST_C, Math.max(LOWEST_C, keyboard.base + 12 * step));
+    if (base === keyboard.base) return;
+    releaseKeys();
+    keyboard.base = base;
+    markKeys();
+}
+
+/** The note under a pointer, or null off the keys. @param {PointerEvent} event */
+function noteAt(event) {
+    const key = document.elementFromPoint(event.clientX, event.clientY)?.closest(".key");
+    return key instanceof HTMLElement && ui.keyboard.contains(key) ? keyboard.base + Number(key.dataset.offset) : null;
+}
+
+/**
+ * Play or let go of the note a computer key stands for, or move the octave with Z and X. Says whether it was one.
+ * @param {KeyboardEvent} event @param {boolean} down
+ */
+function computerKey(event, down) {
+    if (event.code === "KeyZ" || event.code === "KeyX") {
+        if (down && !event.repeat) shiftOctave(event.code === "KeyZ" ? -1 : 1);
+        return true;
+    }
+    const offset = KEY_CODES.indexOf(event.code);
+    if (offset < 0) return false;
+    const held = keyboard.codes.get(event.code);
+    if (down && held === undefined) {
+        keyboard.codes.set(event.code, keyboard.base + offset);
+        playKey(keyboard.base + offset, true);
+    } else if (!down && held !== undefined) {
+        keyboard.codes.delete(event.code);
+        playKey(held, false);
+    }
+    return true;
+}
+
+const keysOpen = () => !ui.keys.hidden;
+
+/** @param {boolean} open @param {boolean} [save] false when restoring the last visit's choice */
+function showKeys(open, save = true) {
+    ui.keys.hidden = !open;
+    ui.keysToggle.setAttribute("aria-expanded", String(open));
+    if (!open) releaseKeys();
+    if (!save) return;
+    // The keys open under the desk, often below the fold: bring them into view.
+    if (open) {
+        const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+        ui.keys.scrollIntoView({ behavior: still ? "auto" : "smooth", block: "nearest" });
+    }
+    try {
+        localStorage.setItem(KEYS_OPEN, String(open));
+    } catch {
+        // Storage can be blocked, as in some private windows; the keys stay as they are for this visit.
+    }
 }
 
 // ----- theme and guide
@@ -1054,6 +1216,16 @@ function run(input) {
         case "theme":
             setTheme(command.name);
             return print(`theme ${THEMES[command.name]}`, "ok");
+        case "keys": {
+            const open = command.on ?? !keysOpen();
+            showKeys(open);
+            return print(
+                open
+                    ? "the melodica is out under the desk: hold its keys, or leave the console and play A to K"
+                    : "the melodica is put away",
+                "ok",
+            );
+        }
         case "notation":
             return print(SPEC, "dim");
         case "clear":
@@ -1110,8 +1282,45 @@ window.addEventListener("unhandledrejection", (event) =>
 );
 buildStrips();
 buildPads();
+buildKeyboard();
+markKeys();
 buildGuide();
 buildThemeMenu();
+try {
+    showKeys(localStorage.getItem(KEYS_OPEN) === "true", false);
+} catch {
+    // Storage can be blocked; the keys start put away.
+}
+ui.keysToggle.addEventListener("click", () => showKeys(!keysOpen()));
+ui.octaveDown.addEventListener("click", () => shiftOctave(-1));
+ui.octaveUp.addEventListener("click", () => shiftOctave(1));
+ui.keyboard.addEventListener("pointerdown", (event) => {
+    const midi = noteAt(event);
+    if (midi === null) return;
+    ui.keyboard.setPointerCapture(event.pointerId);
+    keyboard.pointers.set(event.pointerId, midi);
+    playKey(midi, true);
+});
+// Sliding plays the next key, the way a finger runs along a melodica.
+ui.keyboard.addEventListener("pointermove", (event) => {
+    if (!keyboard.pointers.has(event.pointerId)) return;
+    const was = keyboard.pointers.get(event.pointerId) ?? null;
+    const midi = noteAt(event);
+    if (midi === was) return;
+    if (was !== null) playKey(was, false);
+    if (midi !== null) playKey(midi, true);
+    keyboard.pointers.set(event.pointerId, midi);
+});
+for (const type of ["pointerup", "pointercancel"]) {
+    ui.keyboard.addEventListener(type, (event) => {
+        const { pointerId } = /** @type {PointerEvent} */ (event);
+        const midi = keyboard.pointers.get(pointerId);
+        keyboard.pointers.delete(pointerId);
+        if (typeof midi === "number") playKey(midi, false);
+    });
+}
+document.addEventListener("keyup", (event) => computerKey(event, false));
+window.addEventListener("blur", releaseKeys);
 const savedTheme = document.documentElement.dataset.theme;
 setTheme(isTheme(savedTheme) ? savedTheme : "dub", false);
 ui.theme.addEventListener("click", () => showThemeMenu(!themeMenuOpen()));
@@ -1310,6 +1519,8 @@ document.addEventListener("keydown", (event) => {
     } else if (event.key === "/") {
         event.preventDefault();
         ui.command.focus();
+    } else if (keysOpen() && !event.ctrlKey && !event.metaKey && !event.altKey && computerKey(event, true)) {
+        event.preventDefault();
     }
 });
 

@@ -39,6 +39,12 @@ export const GUIDE = [
         try: ["crash", "spin", "horn", "phaser", "phaser off", "pull up"],
     },
     {
+        title: "Play the melodica",
+        text: "keys, in the top bar, brings out a melodica under the desk, the instrument Augustus Pablo made a dub voice. Hold a key or slide along them, or play the computer keys A to K, with W E T Y U for the black ones and Z and X for the octave. A dot marks each note in the riddim's key and a bar its root. The strip beside the keys throws the melodica into the echo.",
+        show: "#keys-toggle",
+        try: ["keys"],
+    },
+    {
         title: "Describe a riddim",
         text: "Type an idea in English, Portuguese or Spanish and the composer writes it, offline: a style, a tempo, a key, a mood, an image or an artist. Two names, as in `X meets Y`, share the work. `again` plays another version, words like `darker`, `a bit faster` or `more echo` change the riddim playing, and `undo` goes back.",
         show: "#command",

@@ -10,6 +10,7 @@ import {
     emptyRiddim,
     fromHash,
     parse,
+    scaleNotes,
     serialize,
     stepAt,
     toHash,
@@ -145,6 +146,12 @@ describe("pitch", () => {
         assert.deepEqual(chordMidi("2", aMinor), [59, 62, 65]);
         assert.deepEqual(chordMidi("5M", aMinor), [64, 68, 71]);
         assert.deepEqual(chordMidi("4m", { root: "C", mode: "major" }), [65, 68, 72]);
+    });
+    it("names the notes of a key's scale, root first, for the keyboard", () => {
+        assert.deepEqual(scaleNotes(aMinor), [9, 11, 0, 2, 4, 5, 7]);
+        assert.deepEqual(scaleNotes({ root: "C", mode: "major" }), [0, 2, 4, 5, 7, 9, 11]);
+        assert.deepEqual(scaleNotes({ root: "Cb", mode: "major" }), [11, 1, 3, 4, 6, 8, 10]);
+        assert.deepEqual(scaleNotes({ root: "F#", mode: "minor" }), [6, 8, 9, 11, 1, 2, 4]);
     });
     it("finds the chord for a step", () => {
         const chords = [["1", "4"], ["5"]];

@@ -185,6 +185,74 @@ describe("audio", () => {
         assert.ok(held - after > 30, `siren release ${held.toFixed(1)} vs ${after.toFixed(1)} dBFS`);
     });
 
+    describe("the melodica keys", () => {
+        const silent = riddimOf("dubwise 1\necho 1/4 0\n");
+        /** Render the keys alone, dry, with `play` pressing and letting go. */
+        const keys = (play, seconds = 2.5) =>
+            render(silent, {
+                seconds,
+                configure: (engine) => {
+                    engine.setSpring(0, 0);
+                    engine.setThrow("keys", false, 0);
+                    engine.setEcho(0.5, 0, 0);
+                    play(engine);
+                },
+            });
+        /** The loudest period between 2 and 20 ms, by autocorrelation, as a frequency. */
+        const pitch = (buffer, from, to) => {
+            const data = buffer.getChannelData(0).slice(from * buffer.sampleRate, to * buffer.sampleRate);
+            let best = 0;
+            let bestLag = 0;
+            for (let lag = Math.floor(buffer.sampleRate / 500); lag < buffer.sampleRate / 50; lag++) {
+                let sum = 0;
+                for (let i = 0; i + lag < data.length; i++) sum += data[i] * data[i + lag];
+                if (sum > best) [best, bestLag] = [sum, lag];
+            }
+            return buffer.sampleRate / bestLag;
+        };
+
+        it("sounds a key only while it is held, at its pitch", async () => {
+            const buffer = await keys((engine) => {
+                engine.keys.down(57, 0.3);
+                engine.keys.up(57, 1.3);
+            });
+            const held = measure(buffer, 0.5, 1.2).db;
+            const after = measure(buffer, 2, 2.5).db;
+            assert.ok(held > -35, `melodica ${held.toFixed(1)} dBFS`);
+            assert.ok(held - after > 30, `release ${held.toFixed(1)} vs ${after.toFixed(1)} dBFS`);
+            const heard = pitch(buffer, 0.6, 0.8);
+            assert.ok(Math.abs(heard - 220) < 4, `A3 heard at ${heard.toFixed(1)} Hz`);
+        });
+
+        it("plays chords without clipping, and lets every key go at once", async () => {
+            const buffer = await keys((engine) => {
+                for (const midi of [60, 64, 67, 72]) engine.keys.down(midi, 0.2);
+                engine.keys.release(1.2);
+            });
+            const chord = measure(buffer, 0.4, 1.1);
+            assert.ok(chord.peak <= 1 && !chord.nan, `chord peak ${chord.peak}`);
+            assert.ok(chord.db - measure(buffer, 1.9, 2.5).db > 30);
+        });
+
+        it("ignores a key pressed twice, and a key let go that was never pressed", async () => {
+            const buffer = await keys((engine) => {
+                engine.keys.up(62, 0.1);
+                engine.keys.down(62, 0.2);
+                engine.keys.down(62, 0.4);
+                engine.keys.up(62, 1);
+            });
+            assert.ok(measure(buffer, 1.8, 2.5).peak < 1e-3);
+        });
+
+        it("goes quiet with its channel muted", async () => {
+            const buffer = await keys((engine) => {
+                engine.setMute("keys", true, 0);
+                engine.keys.down(60, 0.2);
+            }, 1);
+            assert.ok(measure(buffer, 0.3, 1).peak < 1e-3);
+        });
+    });
+
     it("kicks the spring tank with a crash, whatever the spring level", async () => {
         const silent = riddimOf("dubwise 1\necho 1/4 0\n");
         const crash = (on) =>

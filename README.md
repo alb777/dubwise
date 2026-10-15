@@ -13,22 +13,24 @@ A dub sound system in your browser. Describe a riddim in your own words and it p
 1. **Describe a riddim** in English, Portuguese or Spanish: `inspired by Augustus Pablo`, `a slow one drop for a rainy night`, `Metallica meets King Tubby`. Then steer it: `darker`, `a bit faster`, `more echo`.
 2. **Mix it like dub**: mute, solo, hold **throw** to send a channel into the echo, sweep the filter, play the siren.
 3. **Hit the effects**: spring crash, echo spin, air horn, phaser, low and high kills, tape stop and pull up.
-4. **Edit and live-code**: click the grid, or type a line like `bpm 76` or `kick x...x...x...x...`.
-5. **Talk to the selector**, in English, Portuguese or Spanish: say hi for the mood of the day, `tip` for a dub technique it plays on your riddim, `who is Scientist?` for the story behind a name, `who else sounds like this?` for names close to the riddim playing.
-6. **Share it**: the whole riddim lives in the link.
-7. **Learn as you play**: **guide** (or `?`) opens beside the app, and the flag in the corner picks one of 8 themes.
+4. **Play the melodica**: **keys** brings out a keyboard under the desk. Play it with the mouse, a finger or the computer keys A to K, with the riddim's scale marked on it.
+5. **Edit and live-code**: click the grid, or type a line like `bpm 76` or `kick x...x...x...x...`.
+6. **Talk to the selector**, in English, Portuguese or Spanish: say hi for the mood of the day, `tip` for a dub technique it plays on your riddim, `who is Scientist?` for the story behind a name, `who else sounds like this?` for names close to the riddim playing.
+7. **Share it**: the whole riddim lives in the link.
+8. **Learn as you play**: **guide** (or `?`) opens beside the app, and the flag in the corner picks one of 8 themes.
 
 ## The console
 
 ```
 play, stop                start or stop the riddim
-mute <ch>, unmute <ch>    channels: kick rim hat bass skank siren
+mute <ch>, unmute <ch>    channels: kick rim hat bass skank siren keys
 solo <ch>, unsolo         hear one channel alone, or all again
 throw <ch>                send a channel into the echo for one beat
 filter <-1 to 1>          DJ filter: -1 dark, 0 open, 1 thin
 crash, horn, spin         spring crash, air horn, echo spin
 phaser, kill low|high     switch the phaser or a kill on and off
 tape stop, pull up        halt the riddim, or rewind it and play it from the top
+keys, keys off            bring out the melodica keyboard, or put it away
 preset <name>             one-drop, rockers, steppers
 again, undo               another version of the last idea, or back one change
 show, share, help, notation, clear

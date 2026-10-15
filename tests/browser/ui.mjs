@@ -78,7 +78,7 @@ await withPage("/", async (page) => {
     check("loads without errors", page.errors.length === 0, page.errors);
     check("draws 4 drum rows of 16 steps", (await evaluate("document.querySelectorAll('.cell').length")) === 64);
     check("draws the bass row", (await evaluate("document.querySelectorAll('.note').length")) === 16);
-    check("draws 6 channel strips", (await evaluate("document.querySelectorAll('.strip').length")) === 6);
+    check("draws 6 channel strips", (await evaluate("document.querySelectorAll('#strips .strip').length")) === 6);
     check("loads the one drop preset", (await evaluate("document.getElementById('bpm').value")) === "72");
     check(
         "shows bar tabs for a 2 bar riddim",
@@ -157,6 +157,78 @@ await withPage("/", async (page) => {
     );
     check("the playhead moves", (await evaluate("document.querySelectorAll('.now').length")) > 0);
     await evaluate("document.getElementById('play').click()");
+
+    // The melodica keys: put away until asked for, then played with the pointer and the computer keys.
+    const keysHidden = "document.getElementById('keys').hidden";
+    check("the keys start put away", (await evaluate(keysHidden)) === true);
+    await evaluate("document.getElementById('keys-toggle').click()");
+    await wait(700);
+    check(
+        "the keys button brings out the keys",
+        (await evaluate(keysHidden)) === false &&
+            (await evaluate("document.getElementById('keys-toggle').getAttribute('aria-expanded')")) === "true",
+    );
+    check(
+        "two octaves and the top C, with a strip of their own",
+        (await evaluate("document.querySelectorAll('#keyboard .key').length")) === 25 &&
+            (await evaluate(`document.querySelectorAll('#keys .strip[data-channel="keys"]').length`)) === 1,
+    );
+    const marks = await evaluate(`(() => {
+        const names = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+        const [root] = document.getElementById("keyinfo").textContent.split(" ");
+        const keys = [...document.querySelectorAll("#keyboard .key")];
+        return {
+            root: (names[root[0]] + (root[1] === "#" ? 1 : root[1] === "b" ? -1 : 0) + 12) % 12,
+            scale: keys.filter((k) => k.dataset.scale === "true").length,
+            roots: keys.filter((k) => k.dataset.root === "true").map((k) => (60 + Number(k.dataset.offset)) % 12),
+        };
+    })()`);
+    check(
+        "the riddim's scale and its root are marked",
+        marks.scale >= 14 && marks.scale <= 15 && marks.roots.length >= 2 && marks.roots.every((r) => r === marks.root),
+        marks,
+    );
+    const keyPoint = (offset) =>
+        evaluate(`(() => {
+            const box = document.querySelector('#keyboard [data-offset="${offset}"]').getBoundingClientRect();
+            return { x: box.left + box.width / 2, y: box.bottom - 12 };
+        })()`);
+    const held = "[...document.querySelectorAll('#keyboard .down')].map((k) => Number(k.dataset.offset))";
+    const mouse = (type, { x, y }) =>
+        send("Input.dispatchMouseEvent", {
+            type,
+            x,
+            y,
+            button: type === "mouseMoved" ? "none" : "left",
+            buttons: type === "mouseReleased" ? 0 : 1,
+            clickCount: 1,
+        });
+    const [c4, d4] = [await keyPoint(0), await keyPoint(2)];
+    await mouse("mousePressed", c4);
+    check("holding a key plays it", JSON.stringify(await evaluate(held)) === "[0]", await evaluate(held));
+    await mouse("mouseMoved", d4);
+    check("sliding plays the next key and lets the last go", JSON.stringify(await evaluate(held)) === "[2]");
+    await mouse("mouseReleased", d4);
+    check("letting go stops it", (await evaluate(held)).length === 0);
+    const computer = (kind, code) =>
+        evaluate(`document.body.dispatchEvent(new KeyboardEvent("${kind}", { code: "${code}", bubbles: true }))`);
+    await computer("keydown", "KeyA");
+    await computer("keydown", "KeyE");
+    check("computer keys play by their place: A is C, E is D sharp", JSON.stringify(await evaluate(held)) === "[0,3]");
+    await computer("keyup", "KeyA");
+    await computer("keyup", "KeyE");
+    check("and stop when let go", (await evaluate(held)).length === 0);
+    const octave =
+        "[document.getElementById('octave').textContent, document.querySelector('#keyboard .key').textContent]";
+    await computer("keydown", "KeyX");
+    check("X moves the keys an octave up", JSON.stringify(await evaluate(octave)) === '["C5","C5"]');
+    await computer("keydown", "KeyZ");
+    check("Z moves them back down", JSON.stringify(await evaluate(octave)) === '["C4","C4"]');
+    check("the keys stay out for the next visit", (await evaluate("localStorage.getItem('dubwise-keys')")) === "true");
+    await evaluate(type("keys off"));
+    check("keys off puts them away", (await evaluate(keysHidden)) === true);
+    await evaluate(type("keys"));
+    check("keys brings them back", (await evaluate(keysHidden)) === false);
 
     // The guide opens beside the app, runs real commands and points at controls.
     const tryButton = (label) =>
@@ -426,6 +498,16 @@ await withPage("/", async (page) => {
     ]) {
         await send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 1, mobile });
         await wait(300);
+        const shown = await evaluate(
+            "[...document.querySelectorAll('#keyboard .key')].filter((k) => k.getClientRects().length).length",
+        );
+        check(`${name}: ${mobile ? "one octave" : "two octaves"} of keys`, shown === (mobile ? 13 : 25), shown);
+        const edge = await evaluate(`(() => {
+            const main = document.querySelector("main");
+            const inner = main.getBoundingClientRect().right - parseFloat(getComputedStyle(main).paddingRight);
+            return document.getElementById("guide-toggle").getBoundingClientRect().right - inner;
+        })()`);
+        check(`${name}: the top buttons stay inside the margin`, edge <= 0.5, edge);
         // Compare with the device width: a mobile browser zooms out to fit a page that is too wide.
         const overflow = await evaluate(`document.documentElement.scrollWidth - ${width}`);
         check(`${name}: no sideways page scroll`, overflow <= 0, overflow);

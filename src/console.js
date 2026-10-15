@@ -5,7 +5,7 @@
 import { editDistance, readIntent } from "../skills/dubwise/scripts/composer.mjs";
 import { DRUMS, SPEC } from "../skills/dubwise/scripts/notation.mjs";
 
-export const CHANNELS = /** @type {const} */ (["kick", "rim", "hat", "bass", "skank", "siren"]);
+export const CHANNELS = /** @type {const} */ (["kick", "rim", "hat", "bass", "skank", "siren", "keys"]);
 export const PRESETS = /** @type {const} */ (["one-drop", "rockers", "steppers"]);
 /** Effects a selector plays live: tapped, held (spin) or switched on and off (phaser, kills). */
 export const EFFECTS = /** @type {const} */ ([
@@ -82,6 +82,7 @@ export const COMMANDS = `commands
   spin                      spin the echo into a howl for two beats (hold the pad for longer)
   phaser, kill low|high     switch the phaser or a kill on and off
   tape stop, pull up        slow the riddim to a halt, or rewind it and play it again from the top
+  keys, keys off            bring out the melodica keyboard, or put it away
   preset <name>             ${PRESETS.join(", ")}
   again                     another version of the last idea
   undo                      take back the last change
@@ -115,6 +116,7 @@ or paste a whole riddim that starts with "dubwise 1".`;
  *   | { type: "preset", name: typeof PRESETS[number] }
  *   | { type: "theme", name: keyof typeof THEMES }
  *   | { type: "log", action: "show" | "save" | "clear" }
+ *   | { type: "keys", on?: boolean }
  *   | { type: "compose" | "prompt", request: string, ai?: boolean }
  *   | { type: "line", line: string }
  *   | { type: "lines", lines: string[] }
@@ -221,6 +223,13 @@ export function parseCommand(input) {
         case "rewind":
             if (!arg) return { type: "fx", effect: "pull-up" };
             break;
+        // "keys to the kingdom" stays an idea.
+        case "keys": {
+            const state = arg.toLowerCase();
+            if (!state) return { type: "keys" };
+            if (state === "on" || state === "off") return { type: "keys", on: state === "on" };
+            break;
+        }
         // "log cabin dub" stays an idea.
         case "log": {
             const action = arg.toLowerCase();

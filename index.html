@@ -31,6 +31,11 @@
                     <button id="ai-toggle" class="pill" type="button" aria-haspopup="dialog" aria-controls="ai-dialog" title="AI reader: off" data-state="off">
                         <span class="icon" aria-hidden="true">✦</span><span class="label">ai</span>
                     </button>
+                    <button id="keys-toggle" class="pill" type="button" aria-controls="keys" aria-expanded="false" title="Melodica keys">
+                        <span class="icon" aria-hidden="true">
+                            <svg viewBox="0 0 16 16" width="14" height="14"><path fill="none" stroke="currentColor" stroke-width="1.4" d="M1.7 2.7h12.6v10.6H1.7zM6 13.3V8.5M10 13.3V8.5" /><path fill="currentColor" d="M4.6 2.7h2.6v5.8H4.6zM8.8 2.7h2.6v5.8H8.8z" /></svg>
+                        </span><span class="label">keys</span>
+                    </button>
                     <div class="theme-picker">
                         <button id="theme" class="pill" type="button" aria-label="Colour theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-menu">
                             <span class="flag" aria-hidden="true"></span><span class="caret" aria-hidden="true">▾</span>
@@ -87,6 +92,18 @@
                         <button type="button" data-fx="pull-up" title="Rewind and play it again from the top (pull up)">pull up</button>
                     </div>
                 </div>
+            </section>
+
+            <section class="panel keys" id="keys" aria-label="Melodica keys" hidden>
+                <div class="keys-side" id="keys-side">
+                    <div class="octave" role="group" aria-label="Octave">
+                        <button type="button" id="octave-down" title="Octave down (Z)" aria-label="Octave down">−</button>
+                        <output id="octave" aria-live="polite"></output>
+                        <button type="button" id="octave-up" title="Octave up (X)" aria-label="Octave up">+</button>
+                    </div>
+                </div>
+                <div class="keyboard" id="keyboard" role="group" aria-label="Melodica keyboard: hold a key to play, slide to the next"></div>
+                <p class="keys-hint">computer keys: A W S E D F T G Y H U J K, Z and X for octaves</p>
             </section>
 
             <section class="panel console" aria-label="Console">
