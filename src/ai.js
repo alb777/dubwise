@@ -8,15 +8,15 @@
  * The choice lives in localStorage. An API key only lives in sessionStorage, so it leaves with the tab.
  */
 import { READING_SCHEMA, readingMessages, sanitizeReading } from "../skills/dubwise/scripts/intent.mjs";
+import { WEBLLM_URL } from "./webllm.js";
+
+export { WEBLLM_URL };
 
 /** @typedef {import("../skills/dubwise/scripts/intent.mjs").Reading} Reading */
 /** @typedef {"off" | "browser" | "chrome" | "endpoint"} Provider */
 /** @typedef {keyof typeof BROWSER_MODELS} ModelSize */
 /** @typedef {{ provider: Provider, size: ModelSize, url: string, model: string }} Settings */
 /** @typedef {(fraction: number, text: string) => void} Progress */
-
-/** The WebLLM build, pinned. sw.js caches this same URL for offline use; a test keeps the two in step. */
-export const WEBLLM_URL = "https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.86/+esm";
 
 /** Models for the browser, with and without 16-bit float shaders, which not every GPU offers. */
 export const BROWSER_MODELS = {

@@ -207,6 +207,19 @@ describe("the in-browser model", () => {
         assert.equal(webgpuProblem({ gpu: true, software: false }), "");
     });
 
+    it("runs in a worker that listens before anything slow loads, so the request for the model is not lost", () => {
+        // The code without its comments, which may well talk about imports and awaits.
+        const source = (name) =>
+            readFileSync(join(import.meta.dirname, "..", "src", name), "utf8").replace(
+                /\/\*[\s\S]*?\*\/|^\s*\/\/.*$/gm,
+                "",
+            );
+        const imports = (text) => [...text.matchAll(/^\s*import\b[^;]*?from\s+"([^"]+)"/gm)].map((match) => match[1]);
+        assert.deepEqual(imports(source("ai-worker.js")), ["./webllm.js"]);
+        assert.deepEqual(imports(source("webllm.js")), []);
+        assert.doesNotMatch(source("webllm.js"), /\bawait\b/);
+    });
+
     it("is cached by the service worker under the same pinned URL", () => {
         const sw = readFileSync(join(import.meta.dirname, "..", "sw.js"), "utf8");
         assert.ok(sw.includes(`const WEBLLM_URL = "${WEBLLM_URL}";`), "sw.js and src/ai.js pin different builds");
