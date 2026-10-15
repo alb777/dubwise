@@ -287,13 +287,26 @@ await withPage("/", async (page) => {
         "the phone bar follows the theme",
         (await evaluate(`document.querySelector('meta[name="theme-color"]').content`)) === "#04122b",
     );
+    // The model in this browser, picked on an earlier visit, in a browser without WebGPU like this headless one.
+    await evaluate(`localStorage.setItem("dubwise-ai", JSON.stringify({ provider: "browser" }))`);
     await send("Page.reload");
-    await wait(1000);
+    await wait(2000);
     check(
         "the theme survives a reload",
         (await evaluate(theme)) === "brazil" &&
             (await evaluate(`document.querySelector('#theme-menu [aria-checked="true"]').dataset.value`)) === "brazil",
     );
+    const startup = await evaluate(
+        `[...document.querySelectorAll("#log > div")].map((l) => [l.className, l.textContent])`,
+    );
+    check(
+        "a saved AI this browser cannot run is noted quietly at start, not as an error",
+        startup.some(([kind, text]) => kind === "dim" && text.includes("cannot run here")) &&
+            !startup.some(([kind]) => kind === "err") &&
+            (await evaluate("document.getElementById('ai-toggle').dataset.state")) === "error",
+        startup,
+    );
+    await evaluate(type("ai off"));
     await evaluate("window.scrollTo(0, 0)");
     await evaluate("document.getElementById('theme').click()");
     const menuShot = await send("Page.captureScreenshot", { format: "png" });

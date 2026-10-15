@@ -1068,6 +1068,18 @@ async function warmUpBrowserModel() {
     }
 }
 
+/**
+ * Warm the in-browser model picked on an earlier visit. A browser that cannot run it, such as one without WebGPU,
+ * only gets a quiet note: nobody asked for the AI yet, and an idea that needs it says why it was not read.
+ */
+async function warmUpSavedModel() {
+    const problem = webgpuProblem(await webgpuSupport());
+    if (!problem) return warmUpBrowserModel();
+    log.add("ai load skipped", { ai: aiName(state.ai), error: problem });
+    setAIState("error");
+    print("the AI reader is set to the model in this browser, which cannot run here: type ai to pick another", "dim");
+}
+
 /** @param {Reading} reading */
 function describeReading(reading) {
     const settings = [reading.style, reading.tempo, reading.mode, reading.echo && `${reading.echo} echo`];
@@ -1343,7 +1355,7 @@ document.addEventListener("pointerdown", (event) => {
 ui.guideToggle.addEventListener("click", () => showGuide(!guideOpen(), true));
 setAIState(state.ai.provider === "off" ? "off" : "on");
 // With the in-browser model picked on an earlier visit, load and warm it while the page is idle, so ideas do not wait.
-if (state.ai.provider === "browser") setTimeout(() => void warmUpBrowserModel(), 1000);
+if (state.ai.provider === "browser") setTimeout(() => void warmUpSavedModel(), 1000);
 /** @type {HTMLSelectElement} */ (/** @type {unknown} */ (aiField("preset"))).replaceChildren(
     new Option("my own address", "custom"),
     ...Object.entries(ENDPOINTS).map(([id, endpoint]) => new Option(endpoint.name, id)),
