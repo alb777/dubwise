@@ -703,7 +703,10 @@ const keyboard = {
     codes: new Map(),
 };
 
-/** Two octaves and the C above. Phones leave out the second octave, the "upper" keys. */
+/**
+ * Two octaves and the C above, each key with its name for the Cs and the letter of the computer key that plays it.
+ * Phones leave out the second octave, the "upper" keys.
+ */
 function buildKeyboard() {
     let whites = 0;
     for (let offset = 0; offset <= 24; offset++) {
@@ -714,7 +717,36 @@ function buildKeyboard() {
         // A white key takes two half columns; a black one the two around the line between two white keys.
         key.style.gridColumn = `${black ? whites * 2 : whites * 2 + 1} / span 2`;
         if (!black) whites++;
+        const name = document.createElement("span");
+        name.className = "name";
+        key.append(name);
+        if (offset < KEY_CODES.length) {
+            const letter = document.createElement("kbd");
+            letter.className = "letter";
+            letter.dataset.code = KEY_CODES[offset];
+            key.append(letter);
+        }
         ui.keyboard.append(key);
+    }
+    void labelComputerKeys();
+}
+
+/**
+ * Print each computer key's letter where it plays, from this keyboard's own layout when the browser tells it, so a
+ * QWERTZ or ABNT2 keyboard shows its own letters. Elsewhere the US letters stand.
+ */
+async function labelComputerKeys() {
+    /** @type {Map<string, string> | undefined} */
+    let layout;
+    try {
+        layout = await /** @type {any} */ (navigator).keyboard?.getLayoutMap();
+    } catch {
+        // Not offered here, or blocked: the US letters stand.
+    }
+    const US = /** @type {Record<string, string>} */ ({ Semicolon: ";", Quote: "'" });
+    for (const element of ui.keys.querySelectorAll("kbd[data-code]")) {
+        const code = /** @type {string} */ (/** @type {HTMLElement} */ (element).dataset.code);
+        element.textContent = (layout?.get(code) ?? US[code] ?? code.replace(/^Key/, "")).toUpperCase();
     }
 }
 
@@ -726,7 +758,8 @@ function markKeys() {
         const midi = keyboard.base + Number(element.dataset.offset);
         element.dataset.scale = String(scale.includes(midi % 12));
         element.dataset.root = String(midi % 12 === scale[0]);
-        element.textContent = midi % 12 === 0 ? `C${midi / 12 - 1}` : "";
+        /** @type {HTMLElement} */ (element.querySelector(".name")).textContent =
+            midi % 12 === 0 ? `C${midi / 12 - 1}` : "";
     }
     ui.octave.textContent = `C${keyboard.base / 12 - 1}`;
     ui.octaveDown.disabled = keyboard.base <= LOWEST_C;
@@ -1233,7 +1266,7 @@ function run(input) {
             showKeys(open);
             return print(
                 open
-                    ? "the melodica is out under the desk: hold its keys, or leave the console and play A to K"
+                    ? "the melodica is out under the desk: hold its keys, or leave the console and type the letters on them"
                     : "the melodica is put away",
                 "ok",
             );

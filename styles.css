@@ -818,6 +818,18 @@ input[type="range"] {
     margin-left: -7px;
 }
 
+/* the letter of the computer key that plays each key, above its dot */
+.key .letter {
+    position: absolute;
+    bottom: 38px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font: inherit;
+    font-size: 12px;
+    font-weight: bold;
+}
+
 .keys-hint {
     grid-column: 2;
     margin: 0;
@@ -825,7 +837,14 @@ input[type="range"] {
     font-size: 12px;
 }
 
+.keys-hint kbd {
+    font: inherit;
+    color: var(--text);
+}
+
+/* letters only where there is a keyboard to type them on */
 @media (hover: none) {
+    .key .letter,
     .keys-hint {
         display: none;
     }

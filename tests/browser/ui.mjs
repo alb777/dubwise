@@ -173,6 +173,21 @@ await withPage("/", async (page) => {
         (await evaluate("document.querySelectorAll('#keyboard .key').length")) === 25 &&
             (await evaluate(`document.querySelectorAll('#keys .strip[data-channel="keys"]').length`)) === 1,
     );
+    const letters = await evaluate(
+        `[...document.querySelectorAll("#keyboard .key")].map((k) => k.querySelector(".letter")?.textContent ?? "")`,
+    );
+    check(
+        "each key a computer key plays shows its letter",
+        letters.slice(0, 13).join("") === "AWSEDFTGYHUJK" &&
+            letters.slice(13, 18).join("") === "OLP;'" &&
+            letters.slice(18).every((letter) => letter === ""),
+        letters,
+    );
+    check(
+        "the hint names the octave keys",
+        (await evaluate(`[...document.querySelectorAll(".keys-hint kbd")].map((k) => k.textContent).join("")`)) ===
+            "ZX",
+    );
     const marks = await evaluate(`(() => {
         const names = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
         const [root] = document.getElementById("keyinfo").textContent.split(" ");
@@ -219,7 +234,7 @@ await withPage("/", async (page) => {
     await computer("keyup", "KeyE");
     check("and stop when let go", (await evaluate(held)).length === 0);
     const octave =
-        "[document.getElementById('octave').textContent, document.querySelector('#keyboard .key').textContent]";
+        "[document.getElementById('octave').textContent, document.querySelector('#keyboard .key .name').textContent]";
     await computer("keydown", "KeyX");
     check("X moves the keys an octave up", JSON.stringify(await evaluate(octave)) === '["C5","C5"]');
     await computer("keydown", "KeyZ");
