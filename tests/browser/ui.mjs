@@ -76,7 +76,7 @@ await withPage("/", async (page) => {
     const first = await send("Page.captureScreenshot", { format: "png" });
     writeFileSync(join(outDir, "first-screen.png"), Buffer.from(first.data, "base64"));
     check("loads without errors", page.errors.length === 0, page.errors);
-    check("draws 4 drum rows of 16 steps", (await evaluate("document.querySelectorAll('.cell').length")) === 64);
+    check("draws 6 drum rows of 16 steps", (await evaluate("document.querySelectorAll('.cell').length")) === 96);
     check("draws the bass row", (await evaluate("document.querySelectorAll('.note').length")) === 16);
     check("draws 6 channel strips", (await evaluate("document.querySelectorAll('#strips .strip').length")) === 6);
     check("loads the one drop preset", (await evaluate("document.getElementById('bpm').value")) === "72");
