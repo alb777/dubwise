@@ -94,9 +94,13 @@ describe("audio", () => {
         assert.ok(result.db > -35 && result.db < -8, `rms ${result.db.toFixed(1)} dBFS`);
     });
 
-    for (const track of ["kick", "rim", "hat", "bass", "skank"]) {
+    for (const track of ["kick", "rim", "hat", "snare", "clap", "bass", "skank"]) {
         it(`${track} is audible on its own`, async () => {
-            const buffer = await render(preset("steppers"), { seconds: 3.3, configure: soloing(track) });
+            const riddim =
+                track === "snare" || track === "clap"
+                    ? riddimOf(`dubwise 1\nbpm 80\n${track} x...............\necho 1/4 0\nspring 0\n`)
+                    : preset("steppers");
+            const buffer = await render(riddim, { seconds: 3.3, configure: soloing(track) });
             const result = measure(buffer, 0.05);
             assert.ok(result.db > -45, `${track} rms ${result.db.toFixed(1)} dBFS`);
             assert.equal(result.nan, false);

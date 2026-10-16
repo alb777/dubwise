@@ -49,7 +49,7 @@ function velocity(value) {
 export function eventsAt(riddim, step) {
     /** @type {NoteEvent[]} */
     const events = [];
-    for (const track of /** @type {const} */ (["kick", "rim"])) {
+    for (const track of /** @type {const} */ (["kick", "rim", "snare", "clap"])) {
         const value = stepAt(riddim.drums[track], step);
         if (value) events.push({ track, velocity: velocity(value) });
     }

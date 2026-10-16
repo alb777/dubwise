@@ -18,7 +18,7 @@
 export const VERSION = 1;
 export const STEPS_PER_BAR = 16;
 export const MAX_BARS = 8;
-export const DRUMS = /** @type {const} */ (["kick", "rim", "hat", "skank"]);
+export const DRUMS = /** @type {const} */ (["kick", "rim", "hat", "snare", "clap", "skank"]);
 export const DEFAULT_BASE_URL = "https://alb777.github.io/dubwise/";
 
 const SETTINGS = new Set(["bpm", "key", "swing", "bars", "echo", "spring", "bass", "chords", ...DRUMS]);
@@ -91,7 +91,7 @@ export function emptyRiddim() {
         key: { root: "A", mode: "minor" },
         swing: 0,
         bars: 1,
-        drums: { kick: [], rim: [], hat: [], skank: [] },
+        drums: { kick: [], rim: [], hat: [], snare: [], clap: [], skank: [] },
         bass: [],
         chords: [],
         echo: { num: 3, den: 16, feedback: 0.5 },

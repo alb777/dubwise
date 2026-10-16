@@ -1195,6 +1195,8 @@ export function refine(request, text) {
             kick: steps(lines.kick, lines.kick),
             rim: steps(lines.rim, lines.rim),
             hat: steps(lines.hat, lines.lastHat),
+            snare: riddim.drums.snare ?? [],
+            clap: riddim.drums.clap ?? [],
             skank: steps(lines.skank, lines.skank),
         };
         const label = { "one-drop": "one drop", rockers: "rockers", steppers: "steppers" }[style];

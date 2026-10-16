@@ -7,12 +7,14 @@
 import { mulberry32 } from "../skills/dubwise/scripts/composer.mjs";
 import { midiToFrequency } from "../skills/dubwise/scripts/notation.mjs";
 
-export const TRACKS = /** @type {const} */ (["kick", "rim", "hat", "bass", "skank", "siren", "keys"]);
+export const TRACKS = /** @type {const} */ (["kick", "rim", "hat", "snare", "clap", "bass", "skank", "siren", "keys"]);
 
 /** @typedef {typeof TRACKS[number]} Track */
 /**
  * @typedef {{ track: "kick" | "rim", velocity: number }
  *   | { track: "hat", velocity: number, open: boolean }
+ *   | { track: "snare", velocity: number }
+ *   | { track: "clap", velocity: number }
  *   | { track: "bass", velocity: number, midi: number, steps: number }
  *   | { track: "skank", velocity: number, midis: number[] }} NoteEvent
  */
@@ -22,6 +24,8 @@ const MIX = /** @type {Record<Track, { level: number, echo: number, spring: numb
     kick: { level: 0.95, echo: 0, spring: 0.04 },
     rim: { level: 0.5, echo: 0.2, spring: 0.35 },
     hat: { level: 0.45, echo: 0.05, spring: 0.1 },
+    snare: { level: 0.55, echo: 0.25, spring: 0.35 },
+    clap: { level: 0.5, echo: 0.3, spring: 0.4 },
     bass: { level: 0.85, echo: 0, spring: 0 },
     skank: { level: 0.42, echo: 0.22, spring: 0.3 },
     siren: { level: 0.3, echo: 0.55, spring: 0.4 },
@@ -277,6 +281,41 @@ export function createEngine(context, { seed = 7 } = {}) {
         noiseSource(time, 0.05).connect(band).connect(amp).connect(channels.rim.input);
     }
 
+    /** Snare: a low body tone plus a band of noise for the crack. @param {number} time @param {number} velocity */
+    function snare(time, velocity) {
+        const body = context.createOscillator();
+        body.type = "sine";
+        body.frequency.value = 180;
+        const bodyAmp = envelope(time, velocity * 0.5, 0.18);
+        body.connect(bodyAmp).connect(channels.snare.input);
+        body.start(time);
+        body.stop(time + 0.25);
+
+        const band = context.createBiquadFilter();
+        band.type = "bandpass";
+        band.frequency.value = 3000;
+        band.Q.value = 2;
+        const crack = envelope(time, velocity * 0.9, 0.12);
+        noiseSource(time, 0.12).connect(band).connect(crack).connect(channels.snare.input);
+    }
+
+    /** Clap: several noise bursts with staggered decays, like a room of hands. @param {number} time @param {number} velocity */
+    function clap(time, velocity) {
+        const gains = [0.9, 0.6, 0.4, 0.25];
+        const decays = [0.06, 0.1, 0.14, 0.2];
+        for (let i = 0; i < gains.length; i++) {
+            const band = context.createBiquadFilter();
+            band.type = "bandpass";
+            band.frequency.value = 2500 + i * 400;
+            band.Q.value = 1.5;
+            const amp = envelope(time + i * 0.025, velocity * gains[i], decays[i]);
+            noiseSource(time + i * 0.025, decays[i] + 0.05)
+                .connect(band)
+                .connect(amp)
+                .connect(channels.clap.input);
+        }
+    }
+
     /** @type {GainNode | null} */
     let openHat = null;
 
@@ -408,6 +447,10 @@ export function createEngine(context, { seed = 7 } = {}) {
                 return kick(time, event.velocity);
             case "rim":
                 return rim(time, event.velocity);
+            case "snare":
+                return snare(time, event.velocity);
+            case "clap":
+                return clap(time, event.velocity);
             case "hat":
                 return hat(time, event.velocity, event.open);
             case "bass":
