@@ -4,6 +4,8 @@ A dub sound system in your browser. Describe a riddim in your own words and it p
 
 **Play it: https://alb777.github.io/dubwise/**
 
+[![CI](https://github.com/alb777/dubwise/workflows/ci/badge.svg)](https://github.com/alb777/dubwise/actions/workflows/ci.yml)
+
 [![An idea typed into the console becomes a riddim](docs/demo.gif)](https://alb777.github.io/dubwise/docs/demo.mp4)
 
 **[Watch the demo with sound](https://alb777.github.io/dubwise/docs/demo.mp4)**
