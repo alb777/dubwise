@@ -47,6 +47,7 @@ import { applyRiddim, createSequencer } from "./sequencer.js";
 
 /** @typedef {import("../skills/dubwise/scripts/notation.mjs").Riddim} Riddim */
 /** @typedef {import("../skills/dubwise/scripts/notation.mjs").ParseError} ParseError */
+/** @typedef {import("../skills/dubwise/scripts/notation.mjs").EchoModel} EchoModel */
 /** @typedef {import("./engine.js").Engine} Engine */
 /** @typedef {import("./console.js").Channel} Channel */
 /** @typedef {import("./console.js").Effect} Effect */
@@ -75,6 +76,7 @@ const ui = {
     grid: byId("grid"),
     strips: byId("strips"),
     echoTime: /** @type {HTMLSelectElement} */ (byId("echo-time")),
+    echoModel: /** @type {HTMLSelectElement} */ (byId("echo-model")),
     feedback: /** @type {HTMLInputElement} */ (byId("feedback")),
     spring: /** @type {HTMLInputElement} */ (byId("spring")),
     filter: /** @type {HTMLInputElement} */ (byId("filter")),
@@ -398,6 +400,7 @@ function render() {
     const echo = `${riddim.echo.num}/${riddim.echo.den}`;
     if (![...ui.echoTime.options].some((o) => o.value === echo)) ui.echoTime.add(new Option(echo, echo));
     ui.echoTime.value = echo;
+    ui.echoModel.value = riddim.echo.model;
     ui.feedback.value = String(riddim.echo.feedback);
     ui.spring.value = String(riddim.spring);
     showOutputs();
@@ -1476,6 +1479,10 @@ ui.grid.addEventListener("click", (event) => {
 ui.echoTime.addEventListener("change", () => {
     const [num, den] = ui.echoTime.value.split("/").map(Number);
     commit({ ...state.riddim, echo: { ...state.riddim.echo, num, den } });
+});
+ui.echoModel.addEventListener("change", () => {
+    const model = /** @type {EchoModel} */ (ui.echoModel.value);
+    commit({ ...state.riddim, echo: { ...state.riddim.echo, model } });
 });
 ui.feedback.addEventListener("input", () => {
     commit({ ...state.riddim, echo: { ...state.riddim.echo, feedback: Number(ui.feedback.value) } });

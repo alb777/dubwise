@@ -375,6 +375,40 @@ describe("audio", () => {
         assert.ok(measure(await horn(true), 0.2, 1.2).peak < 1e-3);
     });
 
+    describe("the echo heads", () => {
+        const head = (model) => riddimOf(`dubwise 1\nbpm 80\nrim x...............\necho 3/16 0.6 ${model}\n`);
+        /** The loudest sample difference from `from` on, between two renders of the same riddim. */
+        const apart = (a, b, from = 1.2) => {
+            const start = Math.floor(from * a.sampleRate);
+            let max = 0;
+            for (let channel = 0; channel < 2; channel++) {
+                const x = a.getChannelData(channel);
+                const y = b.getChannelData(channel);
+                for (let i = start; i < x.length; i++) max = Math.max(max, Math.abs(x[i] - y[i]));
+            }
+            return max;
+        };
+        const models = /** @type {const} */ (["tape", "space", "bbd", "digital"]);
+
+        it("colors every repeat, and each head sounds like its own", async () => {
+            const rendered = [];
+            for (const model of models) {
+                const buffer = await render(head(model), {
+                    seconds: 3.5,
+                    configure: (engine) => engine.setSpring(0, 0),
+                });
+                const tail = measure(buffer, 1.2, 3.5);
+                assert.equal(tail.nan, false, model);
+                assert.ok(tail.db > -70, `${model} tail ${tail.db.toFixed(1)} dBFS`);
+                rendered.push(buffer);
+            }
+            const [tape, space, bbd, digital] = rendered;
+            assert.ok(apart(digital, bbd) > 0.005, "bbd darkens what digital leaves open");
+            assert.ok(apart(tape, digital) > 0.005, "tape wobbles where digital stays still");
+            assert.ok(apart(tape, space) > 0.005, "space blooms the repeats through a spring");
+        });
+    });
+
     for (const idea of [
         "crie um riddim inspirado em augustus pablo",
         "Iration Steppas meets King Tubby",

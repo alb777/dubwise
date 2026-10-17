@@ -76,6 +76,7 @@ export function eventsAt(riddim, step) {
  */
 export function applyRiddim(engine, riddim, time) {
     engine.setEcho(echoSeconds(riddim), riddim.echo.feedback, time);
+    engine.setEchoModel(riddim.echo.model, time);
     engine.setSpring(riddim.spring, time);
 }
 

@@ -95,6 +95,11 @@ await withPage(
                 });
             }
         };
+        /** Switch the echo head. @param {string} model */
+        const setHead = (model) =>
+            evaluate(
+                `(() => { const s = document.getElementById("echo-model"); s.value = "${model}"; s.dispatchEvent(new Event("change")); })()`,
+            );
         /** Sweep the DJ filter. @param {number} to */
         const sweep = async (to) => {
             const set = (v) =>
@@ -323,6 +328,11 @@ await withPage(
         // ---- FINAL: Slow one drop, filter sweeps ----
         await type("a slow one drop for a rainy night");
         await wait(5000);
+        // The echo head: the repeats bloom through a spring, then go back to tape.
+        await setHead("space");
+        await wait(4500);
+        await setHead("tape");
+        await wait(1500);
         await sweep(-0.85);
         await wait(500);
         await type("brighter");

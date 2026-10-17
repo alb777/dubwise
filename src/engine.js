@@ -1,11 +1,13 @@
 // @ts-check
 /**
  * The dubwise audio graph: synthesized voices, a channel per track with mute and sends,
- * a tape echo, a spring reverb and a DJ-style filter on the master.
+ * a tape echo with four heads, a spring reverb and a DJ-style filter on the master.
  * Runs on an AudioContext or an OfflineAudioContext.
  */
 import { mulberry32 } from "../skills/dubwise/scripts/composer.mjs";
 import { midiToFrequency } from "../skills/dubwise/scripts/notation.mjs";
+
+/** @typedef {import("../skills/dubwise/scripts/notation.mjs").EchoModel} EchoModel */
 
 export const TRACKS = /** @type {const} */ (["kick", "rim", "hat", "snare", "clap", "bass", "skank", "siren", "keys"]);
 
@@ -89,6 +91,19 @@ function tanhCurve(drive) {
 }
 
 /**
+ * What every repeat of an echo head goes through: tape saturates and wobbles (Nux Tape Echo), space adds a
+ * spring bloom on every repeat (Boss RE-2 Space Echo), bbd darkens like an analog bucket brigade
+ * (tc Bucket Brigade) and digital leaves the repeats wide open (Harley Benton D-SEED).
+ * @type {Record<EchoModel, { tone: number, cut: number, wow: number, flutter: number, wash: number }>}
+ */
+const ECHO_HEADS = {
+    tape: { tone: 2600, cut: 160, wow: 0.0018, flutter: 0.00025, wash: 0 },
+    space: { tone: 2300, cut: 150, wow: 0.0015, flutter: 0.0002, wash: 0.4 },
+    bbd: { tone: 1450, cut: 210, wow: 0, flutter: 0, wash: 0 },
+    digital: { tone: 16000, cut: 60, wow: 0, flutter: 0, wash: 0 },
+};
+
+/**
  * @param {BaseAudioContext} context
  * @param {{ seed?: number }} [options]
  */
@@ -152,17 +167,17 @@ export function createEngine(context, { seed = 7 } = {}) {
     limiter.connect(master).connect(clipIn).connect(clipper).connect(deck).connect(deckOut);
     deckOut.connect(context.destination);
 
-    // Tape echo: delay -> tone -> low cut -> tape saturation -> feedback -> delay.
+    // The echo: delay -> tone -> low cut -> saturation -> feedback -> delay, colored by the head in use.
     const echoIn = context.createGain();
     const delay = context.createDelay(2);
     delay.delayTime.value = 0.375;
     const tone = context.createBiquadFilter();
     tone.type = "lowpass";
-    tone.frequency.value = 2600;
+    tone.frequency.value = ECHO_HEADS.tape.tone;
     tone.Q.value = 0.6;
     const lowCut = context.createBiquadFilter();
     lowCut.type = "highpass";
-    lowCut.frequency.value = 160;
+    lowCut.frequency.value = ECHO_HEADS.tape.cut;
     const tape = context.createWaveShaper();
     tape.curve = tanhCurve(1.4);
     tape.oversample = "2x";
@@ -173,10 +188,17 @@ export function createEngine(context, { seed = 7 } = {}) {
     echoIn.connect(delay);
     delay.connect(tone).connect(lowCut).connect(tape).connect(feedback).connect(delay);
     tape.connect(echoReturn).connect(mixBus);
-    // Wow and flutter wobble the delay time a little, like a worn tape transport.
+    // The space head's bloom: repeats also run through a spring tank of their own, outside the feedback loop,
+    // so the desk's spring knob and the echo head's wash stay apart.
+    const spaceWash = context.createGain();
+    spaceWash.gain.value = ECHO_HEADS.tape.wash;
+    tape.connect(spaceWash);
+    // Wow and flutter wobble the delay time a little, like a worn tape transport; the head sets how much.
+    /** The wow and flutter gains, re-depthed per head. @type {GainNode[]} */
+    const wobble = [];
     for (const [rate, depth] of [
-        [0.4, 0.0018],
-        [7, 0.00025],
+        [0.4, ECHO_HEADS.tape.wow],
+        [7, ECHO_HEADS.tape.flutter],
     ]) {
         const lfo = context.createOscillator();
         lfo.frequency.value = rate;
@@ -184,7 +206,10 @@ export function createEngine(context, { seed = 7 } = {}) {
         amount.gain.value = depth;
         lfo.connect(amount).connect(delay.delayTime);
         lfo.start();
+        wobble.push(amount);
     }
+    /** The head in use, so reapplying the same one leaves a ringing tail alone. @type {EchoModel} */
+    let echoHead = "tape";
 
     // Spring reverb.
     const springIn = context.createGain();
@@ -204,6 +229,13 @@ export function createEngine(context, { seed = 7 } = {}) {
     const crashReturn = context.createGain();
     crashReturn.gain.value = 0;
     springHighCut.connect(crashReturn).connect(mixBus);
+    // The space echo's tank: the same springs, a return of their own, so every repeat blooms wet.
+    const spaceTank = context.createConvolver();
+    spaceTank.normalize = true;
+    spaceTank.buffer = convolver.buffer;
+    const spaceReturn = context.createGain();
+    spaceReturn.gain.value = 0.6;
+    spaceWash.connect(spaceTank).connect(spaceReturn).connect(mixBus);
 
     // One channel per track: voices -> level -> mute -> master, with echo and spring sends after the mute,
     // like aux sends on a mixing desk: a muted channel stops feeding the echo, but tails already in it ring on.
@@ -621,6 +653,24 @@ export function createEngine(context, { seed = 7 } = {}) {
             Object.assign(echoSettings, { seconds: Math.min(seconds, 1.9), amount: Math.min(amount, 0.95) });
             delay.delayTime.setTargetAtTime(echoSettings.seconds, time, 0.08);
             feedback.gain.setTargetAtTime(echoSettings.amount, time, 0.02);
+        },
+        /**
+         * The head the repeats go through: how dark and wobbly each pass gets, and whether every repeat blooms
+         * through a spring. The tone glides as the head switches; a ringing tail keeps ringing through it.
+         * @param {EchoModel} model @param {number} [time]
+         */
+        setEchoModel(model, time = context.currentTime) {
+            if (model === echoHead) return;
+            echoHead = model;
+            const head = ECHO_HEADS[model];
+            tone.frequency.setTargetAtTime(head.tone, time, 0.05);
+            lowCut.frequency.setTargetAtTime(head.cut, time, 0.05);
+            const depths = [head.wow, head.flutter, head.wash];
+            for (const [i, gain] of [wobble[0], wobble[1], spaceWash].entries()) {
+                // The anchor keeps node-web-audio-api from jumping the gain before the glide.
+                gain.gain.setValueAtTime(gain.gain.value, time);
+                gain.gain.setTargetAtTime(depths[i], time, 0.08);
+            }
         },
         /**
          * Spin the echo while `on`: feedback past the edge, so the tape runs away and howls, and a delay sliding

@@ -28,9 +28,9 @@ export const GUIDE = [
     },
     {
         title: "Echo, spring, filter and siren",
-        text: "echo time sets the delay in notes and feedback how long it repeats. spring is the reverb tank. filter sweeps from dark to thin; double-click it to open it again. Hold the siren pad and slide: sideways for pitch, up and down for speed.",
+        text: "echo time sets the delay in notes, feedback how long it repeats and echo head what every repeat goes through: tape saturates, space blooms through a spring, bbd darkens like analog, digital stays open. spring is the reverb tank. filter sweeps from dark to thin; double-click it to open it again. Hold the siren pad and slide: sideways for pitch, up and down for speed.",
         show: ".fx",
-        try: ["filter -0.7", "filter 0"],
+        try: ["echo 3/16 0.7 space", "filter -0.7", "filter 0"],
     },
     {
         title: "Play the effects",

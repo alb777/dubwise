@@ -19,6 +19,8 @@ export const VERSION = 1;
 export const STEPS_PER_BAR = 16;
 export const MAX_BARS = 8;
 export const DRUMS = /** @type {const} */ (["kick", "rim", "hat", "snare", "clap", "skank"]);
+/** What each echo repeat goes through: tape (Nux Tape Echo), space (Boss RE-2 + spring), bbd (analog), digital (open). */
+export const ECHO_MODELS = /** @type {const} */ (["tape", "space", "bbd", "digital"]);
 export const DEFAULT_BASE_URL = "https://alb777.github.io/dubwise/";
 
 const SETTINGS = new Set(["bpm", "key", "swing", "bars", "echo", "spring", "bass", "chords", ...DRUMS]);
@@ -40,7 +42,8 @@ skank  <steps>        chord chops, playing the chord the chords line gives for t
 chords 1 | 4          1, 2 or 4 chord degrees per bar; diatonic to the key; m or M forces minor or major
 bass   <tokens>       16 tokens per bar, space separated: . rest, - holds the previous note,
                       a scale degree 1 to 7 with an optional b or # (b3), ' an octave up, , an octave down (5,)
-echo 3/16 0.55        tape echo time as a note length over 4, 8, 16 or 32, and feedback 0 to 0.95
+echo 3/16 0.55        tape echo time as a note length over 4, 8, 16 or 32, and feedback 0 to 0.95,
+                      then the head the repeats go through: ${ECHO_MODELS.join(", ")} (default ${ECHO_MODELS[0]})
 spring 0.3            spring reverb level 0 to 1
 
 Steps count from 1: beat 1 is step 1, beat 2 is step 5, beat 3 is step 9, beat 4 is step 13.
@@ -69,7 +72,8 @@ const ECHO_DENOMINATORS = new Set([4, 8, 16, 32]);
 /**
  * @typedef {"major" | "minor"} Mode
  * @typedef {{ root: string, mode: Mode }} Key
- * @typedef {{ num: number, den: number, feedback: number }} Echo
+ * @typedef {typeof ECHO_MODELS[number]} EchoModel
+ * @typedef {{ num: number, den: number, feedback: number, model: EchoModel }} Echo
  * @typedef {{
  *   bpm: number,
  *   key: Key,
@@ -94,7 +98,7 @@ export function emptyRiddim() {
         drums: { kick: [], rim: [], hat: [], snare: [], clap: [], skank: [] },
         bass: [],
         chords: [],
-        echo: { num: 3, den: 16, feedback: 0.5 },
+        echo: { num: 3, den: 16, feedback: 0.5, model: "tape" },
         spring: 0.25,
     };
 }
@@ -193,16 +197,19 @@ export function parse(text) {
                 break;
             }
             case "echo": {
-                const echo = /^(\d+)\/(\d+)\s+([\d.]+)$/.exec(value);
+                const echo = /^(\d+)\/(\d+)\s+([\d.]+)(?:\s+(\S+))?$/.exec(value);
                 const num = echo ? Number(echo[1]) : 0;
                 const den = echo ? Number(echo[2]) : 0;
                 const feedback = echo ? numberIn(echo[3], 0, 0.95) : null;
-                if (!echo || !ECHO_DENOMINATORS.has(den) || num < 1 || num > den || feedback === null) {
+                const model = echo ? (echo[4] ?? ECHO_MODELS[0]) : "";
+                const known = /** @type {readonly string[]} */ (ECHO_MODELS).includes(model);
+                if (!echo || !ECHO_DENOMINATORS.has(den) || num < 1 || num > den || feedback === null || !known) {
                     fail(
-                        'echo must look like "3/16 0.5": a note length (over 4, 8, 16 or 32) and feedback from 0 to 0.95',
+                        'echo must look like "3/16 0.5": a note length (over 4, 8, 16 or 32), feedback from 0 to 0.95, ' +
+                            `then a head: ${ECHO_MODELS.join(", ")}`,
                     );
                 } else {
-                    riddim.echo = { num, den, feedback };
+                    riddim.echo = { num, den, feedback, model: /** @type {EchoModel} */ (model) };
                 }
                 break;
             }
@@ -321,7 +328,9 @@ export function serialize(riddim) {
     }
     if (riddim.bass.length) lines.push(`bass   ${chunk(riddim.bass, " ").join(" | ")}`);
     if (riddim.chords.length) lines.push(`chords ${riddim.chords.map((bar) => bar.join(" ")).join(" | ")}`);
-    lines.push(`echo ${riddim.echo.num}/${riddim.echo.den} ${riddim.echo.feedback}`);
+    // The default head stays out of the text, like swing 0: older links keep parsing and stay short.
+    const head = riddim.echo.model === ECHO_MODELS[0] ? "" : ` ${riddim.echo.model}`;
+    lines.push(`echo ${riddim.echo.num}/${riddim.echo.den} ${riddim.echo.feedback}${head}`);
     lines.push(`spring ${riddim.spring}`);
     return `${lines.join("\n")}\n`;
 }

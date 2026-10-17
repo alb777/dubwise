@@ -54,12 +54,22 @@ describe("parse", () => {
         assert.equal(riddim.drums.hat[28], 3);
         assert.equal(riddim.bass.length, 32);
         assert.deepEqual(riddim.chords, [["1"], ["4"]]);
-        assert.deepEqual(riddim.echo, { num: 3, den: 16, feedback: 0.55 });
+        assert.deepEqual(riddim.echo, { num: 3, den: 16, feedback: 0.55, model: "tape" });
         assert.equal(riddim.spring, 0.3);
     });
 
     it("uses defaults for what is not set", () => {
         assert.deepEqual(valid("dubwise 1\n"), emptyRiddim());
+    });
+
+    it("reads the echo head and keeps the default one out of the text", () => {
+        const space = valid("dubwise 1\necho 3/16 0.7 space\n");
+        assert.deepEqual(space.echo, { num: 3, den: 16, feedback: 0.7, model: "space" });
+        assert.match(serialize(space), /echo 3\/16 0\.7 space\n/);
+        assert.deepEqual(valid(serialize(space)), space);
+        const tape = valid("dubwise 1\necho 3/16 0.7 tape\n");
+        assert.equal(tape.echo.model, "tape");
+        assert.match(serialize(tape), /echo 3\/16 0\.7\n/);
     });
 
     it("keeps sharps apart from comments", () => {
@@ -88,6 +98,7 @@ describe("parse", () => {
         ["key H minor", 2, /key must look like/],
         ["echo 3/12 0.5", 2, /echo must look like/],
         ["echo 3/16 1.2", 2, /echo must look like/],
+        ["echo 3/16 0.5 flange", 2, /tape, space, bbd, digital/],
         ["bars 9", 2, /bars must be/],
         ["tempo 70", 2, /unknown setting "tempo"/],
         ["kick x...", 2, /kick bar 1 has 4 steps/],
