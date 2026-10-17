@@ -25,7 +25,7 @@ await withPage(url, async ({ evaluate, send, wait, errors }) => {
     });
     await send("Page.reload");
     await wait(2500);
-    check("the page loads with the network off", (await evaluate("document.querySelectorAll('.cell').length")) === 64);
+    check("the page loads with the network off", (await evaluate("document.querySelectorAll('.cell').length")) === 96);
     check("the preset loads offline", (await evaluate("document.getElementById('bpm').value")) === "72");
 
     await evaluate(`(() => {

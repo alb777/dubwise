@@ -19,7 +19,7 @@ A dub sound system in the browser, live at https://alb777.github.io/dubwise/. Pl
 4. `npm run check:browser`: audio and UI checks in a headless browser, Brave by default, `BROWSER=google-chrome` as in CI (verified 2026-10-17 with Brave).
 5. `npm run sw:version`: restamp the service worker cache names (verified 2026-10-17, no change on a clean tree).
 6. `python3 -m http.server 8000`, then open http://localhost:8000: dev server (verified 2026-10-17).
-7. `npm run check:offline`: offline check against the published site (ran 2026-10-17, one stale check fails, see Gotchas 3).
+7. `npm run check:offline`: offline check against the published site (ran 2026-10-17, passed after the 96-cell grid fix).
 8. `npm run check:ai`: the real in-browser model on the GPU, 1.1 GB download, needs WebGPU through Vulkan (not run).
 9. `npm run build:lexicon`: rebuild `lexicon.bin` from a 512 MB model download (not run).
 10. `npm run build:references`: rebuild `artists.mjs` and `src/selector-content.js` from a private source outside this repo (not run, needs that source).
@@ -37,7 +37,7 @@ A dub sound system in the browser, live at https://alb777.github.io/dubwise/. Pl
 
 1. Any change to a precached file (the `PRECACHE` list in `sw.js`) or to `lexicon.bin` needs `npm run sw:version`, or a test fails and returning visitors keep the old app. A new file in `src/` or `skills/dubwise/scripts/` must also go into `PRECACHE`.
 2. `artists.mjs` and `src/selector-content.js` are generated and obfuscated. Never edit them by hand.
-3. A new drum voice touches `DRUMS` (notation.mjs), `TRACKS`, `MIX` and `trigger` (engine.js), `eventsAt` (sequencer.js), `refine` (composer.mjs) and the grid cell count, 16 per drum row, hard-coded in `tests/browser/ui.mjs` and `tests/browser/offline.mjs`. offline.mjs still expects 64 while the grid has 96 since snare and clap.
+3. A new drum voice touches `DRUMS` (notation.mjs), `TRACKS`, `MIX` and `trigger` (engine.js), `eventsAt` (sequencer.js), `refine` (composer.mjs) and the grid cell count, 16 per drum row, hard-coded in `tests/browser/ui.mjs` and `tests/browser/offline.mjs`.
 4. node-web-audio-api applies `setTargetAtTime` early after a gap and the gain explodes. Anchor it with `setValueAtTime(v, t)` at the same time. Choke with a separate GainNode, not `cancelScheduledValues`, which also kills the decay in real browsers.
 5. Its compressor differs from Chromium's, so the master chain ends in a transparent safety clipper. Keep it.
 6. `src/ai-worker.js` imports only `src/webllm.js`, which imports nothing. A heavier import delays `onmessage`, the page's first message is lost and the model never loads. A unit test guards the imports, but only `check:ai` proves the model loads.
