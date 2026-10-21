@@ -78,6 +78,20 @@ spring 0.3
 
 Drums take 16 steps per bar (`.` rest, `x` hit, `X` accent, `o` open hat). Bass, chords and the melodica's `lead` line are scale degrees, so one line moves the riddim to any key; no lead line means no melody, and asking for a melody makes the composer write one. Type `notation` for the full reference.
 
+## Agent skill
+
+The same composer runs without a browser, as an agent skill in `skills/dubwise/SKILL.md` with a small CLI, and `llms.txt` is there for models that look for it. No dependencies:
+
+```bash
+node skills/dubwise/cli.mjs compose "a slow one drop for a rainy night"
+node skills/dubwise/cli.mjs refine "a bit faster" --riddim riddim.txt
+node skills/dubwise/cli.mjs check riddim.txt
+node skills/dubwise/cli.mjs url riddim.txt
+node skills/dubwise/cli.mjs spec
+```
+
+The notation goes to stdout and a one-line reading of the idea to stderr, so `compose "..." > riddim.txt` keeps only the riddim. `refine` exits 3 when the words bring something new, which needs a new idea.
+
 ## Development
 
 Plain JavaScript modules, no build step and no runtime dependencies.

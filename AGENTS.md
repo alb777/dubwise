@@ -6,7 +6,7 @@ A dub sound system in the browser, live at https://alb777.github.io/dubwise/. Pl
 
 1. `index.html`, `styles.css` (themes are `[data-theme]` blocks), `sw.js` (offline cache), `manifest.webmanifest`, `icons/`.
 2. `src/`: the browser app. `engine.js` voices and effects, `sequencer.js` scheduling, `app.js` UI, `console.js` commands and `THEMES`, `guide.js`, `selector.js`, `log.js`, `ai.js` AI providers, `ai-worker.js` plus `webllm.js` for the in-browser model.
-3. `skills/dubwise/scripts/`: the core the app and the tests share. `notation.mjs` (riddim text format, `DRUMS`), `composer.mjs` (idea to riddim, `refine`), `intent.mjs`, `lexicon.mjs`, `artists.mjs` (generated).
+3. `skills/dubwise/scripts/`: the core the app and the tests share. `notation.mjs` (riddim text format, `DRUMS`), `composer.mjs` (idea to riddim, `refine`), `intent.mjs`, `lexicon.mjs`, `artists.mjs` (generated). Beside them, `SKILL.md` and `cli.mjs` are the agent skill and its command line, and `llms.txt` at the root points models at the app.
 4. `skills/dubwise/assets/`: preset riddims and `lexicon.bin`, the generated word map.
 5. `tests/*.test.mjs`: node:test, audio rendered offline with node-web-audio-api. `tests/browser/`: headless Chromium checks over the DevTools protocol (`cdp.mjs`), screenshots in the gitignored `tests/browser/out/`.
 6. `tools/`: `sw-version.mjs`, `build-lexicon.mjs`, `build-references.mjs`, demo recorders (`record-*.mjs`). `docs/`: demo video, GIF and screenshot.
@@ -24,6 +24,7 @@ A dub sound system in the browser, live at https://alb777.github.io/dubwise/. Pl
 9. `npm run build:lexicon`: rebuild `lexicon.bin` from a 512 MB model download (not run).
 10. `npm run build:references`: rebuild `artists.mjs` and `src/selector-content.js` from a private source outside this repo (not run, needs that source).
 11. `git push origin main`: publishes, GitHub Pages serves `main` as it is (not run).
+12. `node skills/dubwise/cli.mjs compose "<idea>"`: the agent skill's CLI, `spec`, `refine`, `check` and `url` (verified 2026-10-21, `tests/skill.test.mjs`).
 
 ## Conventions
 
@@ -47,3 +48,4 @@ A dub sound system in the browser, live at https://alb777.github.io/dubwise/. Pl
 10. WebGPU on Linux needs Vulkan, which can break video in a whole browser. Suggest it only for a separate profile, never an everyday one. Keep `DUBWISE_AI_PROFILE` on disk, not on a RAM tmpfs `/tmp`.
 11. Headless Chrome reports `hover: none`, so hover-only UI such as `.keys-hint` never shows in screenshots.
 12. A new theme needs a `[data-theme]` block in `styles.css`, an entry in `THEMES` and a pass of the WCAG contrast test in `tests/themes.test.mjs`.
+13. `skills/dubwise/cli.mjs` starts with `@ts-nocheck` on purpose: `tsconfig` has `"types": []`, so Node's process, stdin and fs are untyped there; the composer and notation it imports stay checked.

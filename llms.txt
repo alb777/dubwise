@@ -1,0 +1,30 @@
+# dubwise
+
+> A dub sound system in the browser: describe a riddim in your own words and it plays a synthesized one, live, offline, with no dependencies and no build step.
+
+dubwise is a free, MIT-licensed web app at https://alb777.github.io/dubwise/. It writes dub reggae riddims from an
+idea in English, Portuguese or Spanish, plays them with a drum machine, a sub bass, a skank, chords and a melodica
+line, and puts a tape echo, a spring reverb, a siren pad and a set of dub effects on the desk. Riddims are stored as a
+plain text step notation, which is also a share link.
+
+## Start
+
+- [README](README.md): what the app does, how to run it and where it lives.
+- [The app](https://alb777.github.io/dubwise/): the published version, a PWA that works offline.
+- [Demo with sound](https://alb777.github.io/dubwise/docs/demo.mp4): a recorded session.
+
+## Write riddims without the browser
+
+- [Agent skill](skills/dubwise/SKILL.md): the `dubwise` skill, a composer and notation for an agent, offline.
+- [CLI](skills/dubwise/cli.mjs): `compose`, `refine`, `check`, `url` and `spec` over the same composer.
+- [Notation](skills/dubwise/scripts/notation.mjs): the riddim text format, one setting per line, 16 steps per bar.
+
+```
+node skills/dubwise/cli.mjs compose "a slow one drop for a rainy night"
+node skills/dubwise/cli.mjs spec
+```
+
+## Optional
+
+- [Working context](AGENTS.md): layout, commands and gotchas for agents changing this repository.
+- [License](LICENSE): MIT.
