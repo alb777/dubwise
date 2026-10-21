@@ -14,6 +14,7 @@ import {
     DRUMS,
     emptyRiddim,
     fromHash,
+    leadMidi,
     parse,
     SPEC,
     STEPS_PER_BAR,
@@ -174,6 +175,7 @@ function togglePlay() {
         stepQueue.length = 0;
         state.step = -1;
         renderPlayhead();
+        showLeadKey();
     } else {
         // Live sound again after a tape stop or a pull-up.
         engine?.deckReset();
@@ -521,6 +523,17 @@ function renderPlayhead() {
     }
 }
 
+/** Light the key the riddim's own lead line plays, so the melodica shows the melody it plays by itself. */
+function showLeadKey() {
+    const token = state.step >= 0 ? stepAt(state.riddim.lead, state.step) : undefined;
+    // A held note keeps its key lit; a rest or the end of the line puts every key out.
+    if (token === "-") return;
+    const midi = token === undefined ? null : leadMidi(token, state.riddim.key);
+    for (const key of ui.keyboard.querySelectorAll(".lead")) key.classList.remove("lead");
+    if (midi === null) return;
+    ui.keyboard.querySelector(`[data-offset="${midi - keyboard.base}"]`)?.classList.add("lead");
+}
+
 /** Show each step when the audio clock reaches it. */
 function animate() {
     const now = engine?.context.currentTime ?? 0;
@@ -530,6 +543,7 @@ function animate() {
         moved = true;
     }
     if (moved) {
+        showLeadKey();
         const bar = Math.floor(state.step / STEPS_PER_BAR);
         if (state.follow && bar !== state.bar) {
             state.bar = bar;

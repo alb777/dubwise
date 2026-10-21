@@ -40,7 +40,7 @@ export const GUIDE = [
     },
     {
         title: "Play the melodica",
-        text: "keys, in the top bar, brings out a melodica under the desk, the instrument Augustus Pablo made a dub voice. Hold a key or slide along them, or type the letter printed on it; Z and X move the octave. A dot marks each note in the riddim's key and a bar its root. The strip beside the keys throws the melodica into the echo. Ask for a melody, a theme for the melodica, and the riddim writes its own line into the `lead` row above the chords, which the melodica plays by itself.",
+        text: "keys, in the top bar, brings out a melodica under the desk, the instrument Augustus Pablo made a dub voice. Hold a key or slide along them, or type the letter printed on it; Z and X move the octave. A dot marks each note in the riddim's key and a bar its root. The strip beside the keys throws the melodica into the echo. Ask for a melody, a theme for the melodica, and the riddim writes its own line into the `lead` row above the chords, which the melodica plays by itself, lighting each key it plays.",
         show: "#keys-toggle",
         try: ["keys", "lead 5 . 3 . 1 . . . 5 . 3 . 1 . . ."],
     },

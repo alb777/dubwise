@@ -267,6 +267,21 @@ await withPage("/", async (page) => {
     await evaluate(type("keys"));
     check("keys brings them back", (await evaluate(keysHidden)) === false);
 
+    // The riddim's own lead line lights each key it plays, so the keyboard shows the melody it plays by itself.
+    await evaluate(type("play a slow melodica theme in A minor"));
+    let lit = 0;
+    for (let i = 0; i < 40 && !lit; i++) {
+        await wait(100);
+        lit = await evaluate("document.querySelectorAll('#keyboard .key.lead').length");
+    }
+    check("the riddim's own line lights the key it plays", lit === 1, lit);
+    await evaluate("document.getElementById('play').click()");
+    await wait(300);
+    check(
+        "stopping puts the key out",
+        (await evaluate("document.querySelectorAll('#keyboard .key.lead').length")) === 0,
+    );
+
     // The guide opens beside the app, runs real commands and points at controls.
     const tryButton = (label) =>
         `[...document.querySelectorAll("#guide .try")].find((b) => b.textContent === "${label}")`;

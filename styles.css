@@ -795,7 +795,8 @@ input[type="range"] {
     color: var(--text);
 }
 
-.key.down {
+.key.down,
+.key.lead {
     background: var(--accent);
     color: var(--on-accent);
 }

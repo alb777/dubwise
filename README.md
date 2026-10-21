@@ -15,7 +15,7 @@ A dub sound system in your browser. Describe a riddim in your own words and it p
 1. **Describe a riddim** in English, Portuguese or Spanish: `inspired by Augustus Pablo`, `a slow one drop for a rainy night`, `Metallica meets King Tubby`. Then steer it: `darker`, `a bit faster`, `more echo`.
 2. **Mix it like dub**: mute, solo, hold **throw** to send a channel into the echo, sweep the filter, play the siren.
 3. **Hit the effects**: spring crash, echo spin, air horn, phaser, low and high kills, tape stop and pull up.
-4. **Play the melodica**: **keys** brings out a keyboard under the desk. Play it with the mouse, a finger or the computer keys whose letters are printed on it, with the riddim's scale marked. Ask for a melody, a theme for the melodica, and the riddim writes its own line into the `lead` row, which the melodica plays by itself.
+4. **Play the melodica**: **keys** brings out a keyboard under the desk. Play it with the mouse, a finger or the computer keys whose letters are printed on it, with the riddim's scale marked. Ask for a melody, a theme for the melodica, and the riddim writes its own line into the `lead` row, which the melodica plays by itself, lighting each key it plays.
 5. **Edit and live-code**: click the grid, or type a line like `bpm 76` or `kick x...x...x...x...`.
 6. **Talk to the selector**, in English, Portuguese or Spanish: say hi for the mood of the day, `tip` for a dub technique it plays on your riddim, `who is Scientist?` for the story behind a name, `who else sounds like this?` for names close to the riddim playing.
 7. **Share it**: the whole riddim lives in the link.
