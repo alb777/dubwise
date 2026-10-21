@@ -34,6 +34,8 @@ const THEME = `localStorage.setItem("dubwise-theme", "ethiopia");`;
 const frames = [];
 let audioStart = 0;
 let firstIdea = 0;
+/** When the keyboard starts playing itself, where the GIF starts. */
+let gifStart = 0;
 let audio = "";
 
 await withPage(
@@ -266,34 +268,33 @@ await withPage(
         await type("keys");
         await wait(1200);
 
-        // ===== MELODICA FREESTYLE 1: Augustus Pablo dub style =====
+        // ===== MELODICA FREESTYLE: one short phrase by hand, then the riddim takes over =====
         // A minor scale: A(9) B(11) C(12) D(14) E(16) F(17) G(19) A(21)
-        // Pablo style: slow melodic phrases, lots of space, root-5th-octave.
-        // Short phrases with breathing room between them.
         await playMelodica([9, 14, 21], 1, 0.15); // A  - E  - A(8va)
         await wait(1500);
-        await playMelodica([16, 14, 12], 1, 0.15); // E  - D  - C   (answer)
-        await wait(1500);
-        await playMelodica([9, 11, 12, 14], 1, 0.15); // A - B - C - E (turnaround)
-        await wait(1000);
-
-        // Throw keys into echo
-        await hold('.strip[data-channel="keys"] .throw', 800);
-        await wait(1500);
-
-        // ===== MELODICA FREESTYLE 2: Answer phrase (higher, more syncopated) =====
-        // Eighth notes (0.5 beat) with swing
-        await playMelodica([21, 19, 16, 14], 0.5, 0.15); // A  G  E  D
-        await wait(700);
-        await playMelodica([12, 11, 9, 11], 0.5, 0.15); // C  B  A  B
-        await wait(1200);
-
-        // ===== MELODICA FREESTYLE 3: Mouse on screen (visual) - long sustained notes =====
-        // Half notes (2 beats) - dubby held notes with spring reverb
-        await playMouseMelodica([9, 14, 21], 2, 0.15); // A, E, A(8va) - root, 5th, octave
-        await wait(1500);
         await playMouseMelodica([16, 14, 12], 2, 0.15); // E, D, C - answer held
-        await wait(2000);
+        await wait(1800);
+
+        // ===== THE KEYBOARD PLAYS ITSELF =====
+        // "play" plus an idea composes it and starts it. These words ask for a melody, so the composer writes a
+        // lead line into the grid and the melodica plays it with no hand on the keys, each note lighting its key.
+        gifStart = await evaluate("Date.now() / 1000");
+        await type("play a slow melodica theme in A minor");
+        await wait(2500);
+        const leadNotes = await evaluate(`(() => {
+            const nodes = [...document.querySelectorAll("#grid > *")];
+            const at = nodes.findIndex((n) => n.dataset?.setting === "lead");
+            return at < 0 ? -1 : nodes.slice(at + 1, at + 17).filter((n) => n.classList.contains("on")).length;
+        })()`);
+        if (leadNotes < 2)
+            throw new Error(`the lead row has ${leadNotes} notes, so the keyboard is not playing itself`);
+        // Let the line run twice, then ask for another take of it.
+        await wait(9000);
+        await type("again");
+        await wait(9000);
+        // Throw the melodica into the echo while its own line plays on.
+        await hold('.strip[data-channel="keys"] .throw', 800);
+        await wait(3000);
 
         // Close keys
         await type("keys off");
@@ -403,7 +404,7 @@ ffmpeg([
 
 const gif = join(ROOT, "docs", "demo.gif");
 const palette = join(work, "palette.png");
-const clip = ["-ss", Math.max(0, firstIdea - frames[0].time - 0.5).toFixed(2), "-t", "9"];
+const clip = ["-ss", Math.max(0, (gifStart || firstIdea) - frames[0].time - 0.5).toFixed(2), "-t", "9"];
 ffmpeg([...clip, "-i", mp4, "-vf", "fps=10,scale=800:-1:flags=lanczos,palettegen=stats_mode=diff", palette]);
 ffmpeg([
     ...clip,
