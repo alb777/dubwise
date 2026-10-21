@@ -84,6 +84,13 @@ describe("sequencer", () => {
         const riddim = riddimOf("dubwise 1\nkey C major\nskank x...............\n");
         assert.deepEqual(eventsAt(riddim, 0), [{ track: "skank", velocity: 0.8, midis: [60, 64, 67] }]);
     });
+
+    it("turns lead holds into longer melodica notes", () => {
+        const riddim = riddimOf("dubwise 1\nkey C major\nlead 1 . . 1 . . 3 . 5 . . . 5 - 3 .\n");
+        assert.deepEqual(eventsAt(riddim, 0), [{ track: "keys", velocity: 0.85, midi: 60, steps: 1 }]);
+        assert.deepEqual(eventsAt(riddim, 12), [{ track: "keys", velocity: 0.85, midi: 67, steps: 2 }]);
+        assert.deepEqual(eventsAt(riddim, 1), []);
+    });
 });
 
 describe("audio", () => {
@@ -110,6 +117,17 @@ describe("audio", () => {
     it("goes silent when every track is muted, sends included", async () => {
         const buffer = await render(preset("steppers"), { seconds: 2, configure: soloing("none") });
         assert.ok(measure(buffer, 0.1).peak < 1e-3);
+    });
+
+    it("plays the lead line on the melodica's channel", async () => {
+        const riddim = riddimOf(
+            "dubwise 1\nbpm 80\nkey C major\nlead 1 . . 1 . . 3 . 5 . . . 5 - 3 .\necho 1/4 0\nspring 0\n",
+        );
+        const buffer = await render(riddim, { seconds: 3.3, configure: soloing("keys") });
+        const result = measure(buffer, 0.05);
+        assert.ok(result.db > -45, `lead rms ${result.db.toFixed(1)} dBFS`);
+        assert.equal(result.nan, false);
+        assert.ok(result.peak <= 1, `peak ${result.peak}`);
     });
 
     it("throws a hit into the tape echo", async () => {

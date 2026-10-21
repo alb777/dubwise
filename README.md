@@ -15,7 +15,7 @@ A dub sound system in your browser. Describe a riddim in your own words and it p
 1. **Describe a riddim** in English, Portuguese or Spanish: `inspired by Augustus Pablo`, `a slow one drop for a rainy night`, `Metallica meets King Tubby`. Then steer it: `darker`, `a bit faster`, `more echo`.
 2. **Mix it like dub**: mute, solo, hold **throw** to send a channel into the echo, sweep the filter, play the siren.
 3. **Hit the effects**: spring crash, echo spin, air horn, phaser, low and high kills, tape stop and pull up.
-4. **Play the melodica**: **keys** brings out a keyboard under the desk. Play it with the mouse, a finger or the computer keys whose letters are printed on it, with the riddim's scale marked.
+4. **Play the melodica**: **keys** brings out a keyboard under the desk. Play it with the mouse, a finger or the computer keys whose letters are printed on it, with the riddim's scale marked. Ask for a melody, a theme for the melodica, and the riddim writes its own line into the `lead` row, which the melodica plays by itself.
 5. **Edit and live-code**: click the grid, or type a line like `bpm 76` or `kick x...x...x...x...`.
 6. **Talk to the selector**, in English, Portuguese or Spanish: say hi for the mood of the day, `tip` for a dub technique it plays on your riddim, `who is Scientist?` for the story behind a name, `who else sounds like this?` for names close to the riddim playing.
 7. **Share it**: the whole riddim lives in the link.
@@ -24,7 +24,7 @@ A dub sound system in your browser. Describe a riddim in your own words and it p
 ## The console
 
 ```
-play, stop                start or stop the riddim
+play, stop                start or stop the riddim; play <idea> writes the idea and starts it
 mute <ch>, unmute <ch>    channels: kick rim hat bass skank siren keys
 solo <ch>, unsolo         hear one channel alone, or all again
 throw <ch>                send a channel into the echo for one beat
@@ -76,7 +76,7 @@ echo   3/16 0.55
 spring 0.3
 ```
 
-Drums take 16 steps per bar (`.` rest, `x` hit, `X` accent, `o` open hat). Bass and chords are scale degrees, so one line moves the riddim to any key. Type `notation` for the full reference.
+Drums take 16 steps per bar (`.` rest, `x` hit, `X` accent, `o` open hat). Bass, chords and the melodica's `lead` line are scale degrees, so one line moves the riddim to any key; no lead line means no melody, and asking for a melody makes the composer write one. Type `notation` for the full reference.
 
 ## Development
 

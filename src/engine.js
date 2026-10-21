@@ -18,6 +18,7 @@ export const TRACKS = /** @type {const} */ (["kick", "rim", "hat", "snare", "cla
  *   | { track: "snare", velocity: number }
  *   | { track: "clap", velocity: number }
  *   | { track: "bass", velocity: number, midi: number, steps: number }
+ *   | { track: "keys", velocity: number, midi: number, steps: number }
  *   | { track: "skank", velocity: number, midis: number[] }} NoteEvent
  */
 
@@ -487,6 +488,11 @@ export function createEngine(context, { seed = 7 } = {}) {
                 return hat(time, event.velocity, event.open);
             case "bass":
                 return bass(time, event.velocity, event.midi, event.steps * stepSeconds * 0.95);
+            case "keys": {
+                // The riddim's own melodica line: the same reed voice as the live keys, released by itself.
+                const release = time + event.steps * stepSeconds * 0.95;
+                return letGo(reed(event.midi, 0.35 * event.velocity, time), release);
+            }
             case "skank":
                 return skank(time, event.velocity, event.midis);
         }
@@ -548,8 +554,72 @@ export function createEngine(context, { seed = 7 } = {}) {
         };
     })();
 
-    // The melodica is played live from the keyboard, a note for each key held: two reeds a hair apart through a
-    // nasal band, a breath as the note starts and a slow vibrato.
+    // The melodica is played live from the keyboard, a note for each key held, and by the riddim's own lead line:
+    // two reeds a hair apart through a nasal band, a breath as the note starts and a slow vibrato. The caller
+    // owns the release, so a key stays down while it is held and a sequenced note fades by itself.
+    /**
+     * @param {number} midi @param {number} velocity peak level of the note @param {number} time
+     * @returns {{ sources: OscillatorNode[], release: GainNode }}
+     */
+    function reed(midi, velocity, time) {
+        const frequency = midiToFrequency(midi);
+        const nasal = context.createBiquadFilter();
+        nasal.type = "peaking";
+        nasal.frequency.value = 1300;
+        nasal.Q.value = 1.2;
+        nasal.gain.value = 5;
+        const tone = context.createBiquadFilter();
+        tone.type = "lowpass";
+        tone.frequency.value = Math.min(frequency * 8, 6000);
+        const amp = context.createGain();
+        amp.gain.setValueAtTime(0.0001, time);
+        amp.gain.exponentialRampToValueAtTime(velocity, time + 0.035);
+        const release = context.createGain();
+        nasal.connect(tone).connect(amp).connect(release).connect(channels.keys.input);
+        const vibrato = context.createOscillator();
+        vibrato.frequency.value = 5;
+        const cents = context.createGain();
+        cents.gain.value = 6;
+        vibrato.connect(cents);
+        const sources = [vibrato];
+        for (const [type, detune, gain] of /** @type {const} */ ([
+            ["sawtooth", 0, 0.6],
+            ["square", 5, 0.4],
+        ])) {
+            const voice = context.createOscillator();
+            voice.type = type;
+            voice.frequency.value = frequency;
+            voice.detune.value = detune;
+            cents.connect(voice.detune);
+            const mix = context.createGain();
+            mix.gain.value = gain;
+            voice.connect(mix).connect(nasal);
+            sources.push(voice);
+        }
+        for (const source of sources) source.start(time);
+        const breath = context.createBiquadFilter();
+        breath.type = "bandpass";
+        breath.frequency.value = 2400;
+        breath.Q.value = 1.5;
+        noiseSource(time, 0.1)
+            .connect(breath)
+            .connect(envelope(time, 0.08, 0.09))
+            .connect(release);
+        return { sources, release };
+    }
+
+    /**
+     * Fade a reed voice out from `time` and stop it.
+     * @param {{ sources: OscillatorNode[], release: GainNode }} note @param {number} time
+     */
+    function letGo(note, time) {
+        // The release fades a gain of its own, so a note let go during the attack still fades from where it is.
+        // The anchor keeps node-web-audio-api from evaluating the fade before the key is let go.
+        note.release.gain.setValueAtTime(1, time);
+        note.release.gain.setTargetAtTime(0, time, 0.04);
+        for (const source of note.sources) source.stop(time + 0.4);
+    }
+
     const keys = (() => {
         /** @type {Map<number, { sources: OscillatorNode[], release: GainNode }>} */
         const held = new Map();
@@ -559,61 +629,14 @@ export function createEngine(context, { seed = 7 } = {}) {
             const note = held.get(midi);
             if (!note) return;
             held.delete(midi);
-            // The release fades a gain of its own, so a key let go during the attack still fades from where it is.
-            // The anchor keeps node-web-audio-api from evaluating the fade before the key is let go.
-            note.release.gain.setValueAtTime(1, time);
-            note.release.gain.setTargetAtTime(0, time, 0.04);
-            for (const source of note.sources) source.stop(time + 0.4);
+            letGo(note, time);
         }
 
         return {
             /** Press a key. @param {number} midi @param {number} [time] */
             down(midi, time = context.currentTime) {
                 if (held.has(midi)) return;
-                const frequency = midiToFrequency(midi);
-                const nasal = context.createBiquadFilter();
-                nasal.type = "peaking";
-                nasal.frequency.value = 1300;
-                nasal.Q.value = 1.2;
-                nasal.gain.value = 5;
-                const tone = context.createBiquadFilter();
-                tone.type = "lowpass";
-                tone.frequency.value = Math.min(frequency * 8, 6000);
-                const amp = context.createGain();
-                amp.gain.setValueAtTime(0.0001, time);
-                amp.gain.exponentialRampToValueAtTime(0.35, time + 0.035);
-                const release = context.createGain();
-                nasal.connect(tone).connect(amp).connect(release).connect(channels.keys.input);
-                const vibrato = context.createOscillator();
-                vibrato.frequency.value = 5;
-                const cents = context.createGain();
-                cents.gain.value = 6;
-                vibrato.connect(cents);
-                const sources = [vibrato];
-                for (const [type, detune, gain] of /** @type {const} */ ([
-                    ["sawtooth", 0, 0.6],
-                    ["square", 5, 0.4],
-                ])) {
-                    const reed = context.createOscillator();
-                    reed.type = type;
-                    reed.frequency.value = frequency;
-                    reed.detune.value = detune;
-                    cents.connect(reed.detune);
-                    const mix = context.createGain();
-                    mix.gain.value = gain;
-                    reed.connect(mix).connect(nasal);
-                    sources.push(reed);
-                }
-                for (const source of sources) source.start(time);
-                const breath = context.createBiquadFilter();
-                breath.type = "bandpass";
-                breath.frequency.value = 2400;
-                breath.Q.value = 1.5;
-                noiseSource(time, 0.1)
-                    .connect(breath)
-                    .connect(envelope(time, 0.08, 0.09))
-                    .connect(release);
-                held.set(midi, { sources, release });
+                held.set(midi, reed(midi, 0.35, time));
             },
             /** Let go of a key. @param {number} midi @param {number} [time] */
             up(midi, time = context.currentTime) {

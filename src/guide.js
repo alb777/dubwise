@@ -40,18 +40,19 @@ export const GUIDE = [
     },
     {
         title: "Play the melodica",
-        text: "keys, in the top bar, brings out a melodica under the desk, the instrument Augustus Pablo made a dub voice. Hold a key or slide along them, or type the letter printed on it; Z and X move the octave. A dot marks each note in the riddim's key and a bar its root. The strip beside the keys throws the melodica into the echo.",
+        text: "keys, in the top bar, brings out a melodica under the desk, the instrument Augustus Pablo made a dub voice. Hold a key or slide along them, or type the letter printed on it; Z and X move the octave. A dot marks each note in the riddim's key and a bar its root. The strip beside the keys throws the melodica into the echo. Ask for a melody, a theme for the melodica, and the riddim writes its own line into the `lead` row above the chords, which the melodica plays by itself.",
         show: "#keys-toggle",
-        try: ["keys"],
+        try: ["keys", "lead 5 . 3 . 1 . . . 5 . 3 . 1 . . ."],
     },
     {
         title: "Describe a riddim",
-        text: "Type an idea in English, Portuguese or Spanish and the composer writes it, offline: a style, a tempo, a key, a mood, an image or an artist. Two names, as in `X meets Y`, share the work. `again` plays another version, words like `darker`, `a bit faster` or `more echo` change the riddim playing, and `undo` goes back.",
+        text: "Type an idea in English, Portuguese or Spanish and the composer writes it, offline: a style, a tempo, a key, a mood, an image or an artist. Two names, as in `X meets Y`, share the work. Ask for a melody and the melodica plays it. `play` plus an idea, as in `play a steppers in D minor`, writes it and starts it. `again` plays another version, words like `darker`, `a bit faster` or `more echo` change the riddim playing, and `undo` goes back.",
         show: "#command",
         try: [
             "inspired by King Tubby",
             "Iration Steppas meets King Tubby",
             "a slow one drop for a rainy night",
+            "play a slow melodica theme in A minor",
             "again",
             "darker",
             "a bit faster",

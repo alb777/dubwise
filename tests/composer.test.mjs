@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 
 import { ARTISTS } from "../skills/dubwise/scripts/artists.mjs";
 import { compose, composeIntent, readIntent, refine } from "../skills/dubwise/scripts/composer.mjs";
-import { bassMidi, parse } from "../skills/dubwise/scripts/notation.mjs";
+import { bassMidi, leadMidi, parse } from "../skills/dubwise/scripts/notation.mjs";
 
 /** Compose, parse, and return both. */
 function riddimFor(request, take = 0) {
@@ -41,6 +41,14 @@ describe("reading an idea", () => {
     it("does not read an article as a key", () => {
         assert.equal(readIntent("A dark steppers").root, undefined);
         assert.equal(readIntent("E agora um rockers").root, undefined);
+    });
+
+    it("finds the words that ask for the melodica line", () => {
+        assert.equal(readIntent("a theme in the keyboard").lead, true);
+        assert.equal(readIntent("um riddim com melodica").lead, true);
+        assert.equal(readIntent("play a melody for the organ").lead, true);
+        assert.equal(readIntent("a dark steppers").lead, undefined);
+        assert.deepEqual(readIntent("play beverly hills cop theme in the keyboard").unknown, ["beverly hills cop"]);
     });
 
     it("finds tempo and mood", () => {
@@ -135,6 +143,43 @@ describe("composing", () => {
         }
     });
 
+    it("writes a melodica line when the idea asks for a melody", () => {
+        const ideas = [
+            "a dark steppers in D minor with a melody",
+            "um riddim com melodica em C maior",
+            "a theme for the keyboard in G minor",
+        ];
+        for (const idea of ideas) {
+            const { riddim, result } = riddimFor(idea);
+            assert.ok(riddim.lead.length >= 16, `${idea}: ${riddim.lead.length} steps`);
+            assert.match(result.summary, /melodica line/, idea);
+            assert.match(result.text, /^lead {3}/m, idea);
+        }
+    });
+
+    it("keeps the melodica quiet when no melody is asked for", () => {
+        const { riddim, result } = riddimFor("a dark steppers in D minor");
+        assert.deepEqual(riddim.lead, []);
+        assert.doesNotMatch(result.summary, /melodica line/);
+    });
+
+    it("gives the same melody to the same idea and another to the next take", () => {
+        const first = compose("a slow melody in A minor", 0);
+        assert.deepEqual(compose("a slow melody in A minor", 0), first);
+        assert.notEqual(first.text, compose("a slow melody in A minor", 1).text);
+    });
+
+    it("keeps every melodica note in the melodica's register", () => {
+        for (let take = 0; take < 40; take++) {
+            const { riddim } = riddimFor("melodica steppers busy", take);
+            for (const token of riddim.lead) {
+                const midi = leadMidi(token, riddim.key);
+                if (midi !== null)
+                    assert.ok(midi >= 60 && midi <= 84, `${token} in ${riddim.key.root} is midi ${midi}`);
+            }
+        }
+    });
+
     it("always writes a valid riddim", () => {
         const ideas = [
             "crie um riddim",
@@ -194,6 +239,7 @@ describe("composing", () => {
             ["a slow one drop for the quantum era", /I don't know "quantum era", so I went by the other words/],
             ["inspirado em Fulano de Tal", /I don't know "fulano de tal"/],
             ["a riddim for a cat chasing a laser in space", /I don't know "cat", so I went by the other words/],
+            ["a melody for beverly hills cop", /I don't know "beverly hills cop", so I went by the other words/],
         ];
         for (const [idea, note] of cases) assert.match(riddimFor(idea).result.summary, note, idea);
     });
@@ -398,6 +444,7 @@ describe("changing the riddim playing", () => {
             "more dark like a rainy night",
             "faster volcano",
             "more bass",
+            "darker with a melody",
             "more",
         ]) {
             assert.equal(refine(idea, BASE), null, idea);

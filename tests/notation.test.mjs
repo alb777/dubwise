@@ -9,6 +9,7 @@ import {
     chordMidi,
     emptyRiddim,
     fromHash,
+    leadMidi,
     parse,
     scaleNotes,
     serialize,
@@ -80,6 +81,22 @@ describe("parse", () => {
         assert.equal(riddim.bass[0], "#4");
     });
 
+    it("reads a lead line like the bass, and keeps it out of the text when there is none", () => {
+        const riddim = valid("dubwise 1\nlead 1 . . 1 . . 3 . 5 . . . 5 - 3 .\n");
+        assert.equal(riddim.lead.join(" "), "1 . . 1 . . 3 . 5 . . . 5 - 3 .");
+        assert.deepEqual(riddim.bass, []);
+        assert.deepEqual(valid(serialize(riddim)), riddim);
+        assert.doesNotMatch(serialize(emptyRiddim()), /^lead /m);
+    });
+
+    it("reads a lead line across bars", () => {
+        const riddim = valid("dubwise 1\nlead 5 . . . 5 . . . 3 . . . 1 . . . | 1 . . . 3 . . . 5 . . . 5 - 3 .\n");
+        assert.equal(riddim.bars, 2);
+        assert.equal(riddim.lead.length, 32);
+        assert.equal(riddim.lead[16], "1");
+        assert.deepEqual(valid(serialize(riddim)), riddim);
+    });
+
     it("loops shorter lines over the riddim length", () => {
         const riddim = valid("dubwise 1\nbars 4\nkick x...............\nrim ................ | ........x.......\n");
         assert.equal(riddim.bars, 4);
@@ -108,6 +125,9 @@ describe("parse", () => {
         ["bass - . . . . . . . . . . . . . . .", 2, /no note comes before/],
         ["bass 1 . - . . . . . . . . . . . . .", 2, /no note comes before/],
         ["bass 8 . . . . . . . . . . . . . . .", 2, /"8" is not a scale degree/],
+        ["lead 1 . .", 2, /lead bar 1 has 3 steps/],
+        ["lead - . . . . . . . . . . . . . . .", 2, /lead step 1: "-" holds a note/],
+        ["lead 8 . . . . . . . . . . . . . . .", 2, /"8" is not a scale degree/],
         ["chords 1 4 5", 2, /use 1, 2 or 4 per bar/],
         ["chords 1x", 2, /"1x" is not a chord degree/],
     ];
@@ -150,6 +170,16 @@ describe("pitch", () => {
         assert.equal(bassMidi("1'", aMinor), 45);
         assert.equal(bassMidi(".", aMinor), null);
         assert.equal(bassMidi("-", aMinor), null);
+    });
+    it("puts the melodica line around middle C", () => {
+        assert.equal(leadMidi("1", aMinor), 69);
+        assert.equal(leadMidi("1", { root: "C", mode: "major" }), 60);
+        assert.equal(leadMidi("5", aMinor), 76);
+        assert.equal(leadMidi("b3", { root: "C", mode: "major" }), 63);
+        assert.equal(leadMidi("3,", { root: "C", mode: "major" }), 52);
+        assert.equal(leadMidi("1'", aMinor), 81);
+        assert.equal(leadMidi(".", aMinor), null);
+        assert.equal(leadMidi("-", aMinor), null);
     });
     it("builds diatonic triads with quality overrides", () => {
         assert.deepEqual(chordMidi("1", aMinor), [57, 60, 64]);

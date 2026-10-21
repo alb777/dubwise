@@ -3,7 +3,7 @@
  * Turns a riddim into timed note events. The pure helpers are shared by the live scheduler
  * and the offline renderer, so what the tests render is what the app plays.
  */
-import { bassMidi, chordAt, chordMidi, STEPS_PER_BAR, stepAt } from "../skills/dubwise/scripts/notation.mjs";
+import { bassMidi, chordAt, chordMidi, leadMidi, STEPS_PER_BAR, stepAt } from "../skills/dubwise/scripts/notation.mjs";
 
 /** @typedef {import("../skills/dubwise/scripts/notation.mjs").Riddim} Riddim */
 /** @typedef {import("./engine.js").Engine} Engine */
@@ -66,6 +66,13 @@ export function eventsAt(riddim, step) {
         let steps = 1;
         while (steps < riddim.bass.length && stepAt(riddim.bass, step + steps) === "-") steps++;
         events.push({ track: "bass", velocity: 0.9, midi, steps });
+    }
+    const leadToken = stepAt(riddim.lead, step);
+    const leadNote = leadToken === undefined ? null : leadMidi(leadToken, riddim.key);
+    if (leadNote !== null) {
+        let steps = 1;
+        while (steps < riddim.lead.length && stepAt(riddim.lead, step + steps) === "-") steps++;
+        events.push({ track: "keys", velocity: 0.85, midi: leadNote, steps });
     }
     return events;
 }

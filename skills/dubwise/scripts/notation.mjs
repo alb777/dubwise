@@ -23,7 +23,7 @@ export const DRUMS = /** @type {const} */ (["kick", "rim", "hat", "snare", "clap
 export const ECHO_MODELS = /** @type {const} */ (["tape", "space", "bbd", "digital"]);
 export const DEFAULT_BASE_URL = "https://alb777.github.io/dubwise/";
 
-const SETTINGS = new Set(["bpm", "key", "swing", "bars", "echo", "spring", "bass", "chords", ...DRUMS]);
+const SETTINGS = new Set(["bpm", "key", "swing", "bars", "echo", "spring", "bass", "lead", "chords", ...DRUMS]);
 
 /**
  * The notation in a few lines: the app's help, the prompt for an AI and the agent skill all quote this text.
@@ -42,6 +42,8 @@ skank  <steps>        chord chops, playing the chord the chords line gives for t
 chords 1 | 4          1, 2 or 4 chord degrees per bar; diatonic to the key; m or M forces minor or major
 bass   <tokens>       16 tokens per bar, space separated: . rest, - holds the previous note,
                       a scale degree 1 to 7 with an optional b or # (b3), ' an octave up, , an octave down (5,)
+lead   <tokens>       the melodica's own line, same tokens as bass and octave marks; optional,
+                      no line means no melody, and asking for a melody makes the composer write one
 echo 3/16 0.55        tape echo time as a note length over 4, 8, 16 or 32, and feedback 0 to 0.95,
                       then the head the repeats go through: ${ECHO_MODELS.join(", ")} (default ${ECHO_MODELS[0]})
 spring 0.3            spring reverb level 0 to 1
@@ -81,6 +83,7 @@ const ECHO_DENOMINATORS = new Set([4, 8, 16, 32]);
  *   bars: number,
  *   drums: Record<typeof DRUMS[number], number[]>,
  *   bass: string[],
+ *   lead: string[],
  *   chords: string[][],
  *   echo: Echo,
  *   spring: number,
@@ -97,6 +100,7 @@ export function emptyRiddim() {
         bars: 1,
         drums: { kick: [], rim: [], hat: [], snare: [], clap: [], skank: [] },
         bass: [],
+        lead: [],
         chords: [],
         echo: { num: 3, den: 16, feedback: 0.5, model: "tape" },
         spring: 0.25,
@@ -213,13 +217,16 @@ export function parse(text) {
                 }
                 break;
             }
-            case "bass": {
+            case "bass":
+            case "lead": {
                 const bars = splitBars(value);
                 const tokens = [];
                 for (const [b, bar] of bars.entries()) {
                     const steps = bar.split(/\s+/).filter(Boolean);
                     if (steps.length !== STEPS_PER_BAR) {
-                        fail(`bass bar ${b + 1} has ${steps.length} steps, needs ${STEPS_PER_BAR} separated by spaces`);
+                        fail(
+                            `${name} bar ${b + 1} has ${steps.length} steps, needs ${STEPS_PER_BAR} separated by spaces`,
+                        );
                         continue;
                     }
                     tokens.push(...steps);
@@ -228,15 +235,15 @@ export function parse(text) {
                     if (token === ".") continue;
                     if (token === "-") {
                         if (s === 0 || tokens[s - 1] === ".")
-                            fail(`bass step ${s + 1}: "-" holds a note, but no note comes before it`);
+                            fail(`${name} step ${s + 1}: "-" holds a note, but no note comes before it`);
                         continue;
                     }
                     if (!BASS_NOTE.test(token)) {
-                        fail(`bass step ${s + 1}: "${token}" is not a scale degree like 1, b3, 5' or 4,`);
+                        fail(`${name} step ${s + 1}: "${token}" is not a scale degree like 1, b3, 5' or 4,`);
                     }
                 }
-                riddim.bass = tokens;
-                barsByLine.set("bass", bars.length);
+                riddim[name] = tokens;
+                barsByLine.set(name, bars.length);
                 break;
             }
             case "chords": {
@@ -327,6 +334,7 @@ export function serialize(riddim) {
             );
     }
     if (riddim.bass.length) lines.push(`bass   ${chunk(riddim.bass, " ").join(" | ")}`);
+    if (riddim.lead.length) lines.push(`lead   ${chunk(riddim.lead, " ").join(" | ")}`);
     if (riddim.chords.length) lines.push(`chords ${riddim.chords.map((bar) => bar.join(" ")).join(" | ")}`);
     // The default head stays out of the text, like swing 0: older links keep parsing and stay short.
     const head = riddim.echo.model === ECHO_MODELS[0] ? "" : ` ${riddim.echo.model}`;
@@ -407,6 +415,20 @@ export function bassMidi(token, key) {
     if (!note) return null;
     let root = 24 + rootSemitone(key);
     if (root < 28) root += 12;
+    const octave = [...note[3]].reduce((sum, mark) => sum + (mark === "'" ? 12 : -12), 0);
+    return root + degreeSemitones(key, Number(note[2]), note[1]) + octave;
+}
+
+/**
+ * MIDI note for a melodica token. The root sits around middle C, where a melodica line lives.
+ * @param {string} token
+ * @param {Key} key
+ * @returns {number | null} null for rests and holds
+ */
+export function leadMidi(token, key) {
+    const note = BASS_NOTE.exec(token);
+    if (!note) return null;
+    const root = 60 + rootSemitone(key);
     const octave = [...note[3]].reduce((sum, mark) => sum + (mark === "'" ? 12 : -12), 0);
     return root + degreeSemitones(key, Number(note[2]), note[1]) + octave;
 }

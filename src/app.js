@@ -370,7 +370,7 @@ function loadFromLink() {
 function currentLine(name) {
     const line = state.text.split("\n").find((l) => l.split(/\s+/)[0] === name);
     if (line) return line.replace(/\s+/, " ");
-    if (name === "bass") return `bass ${Array(STEPS_PER_BAR).fill(".").join(" ")}`;
+    if (name === "bass" || name === "lead") return `${name} ${Array(STEPS_PER_BAR).fill(".").join(" ")}`;
     if (name === "chords") return "chords 1";
     return `${name} ${".".repeat(STEPS_PER_BAR)}`;
 }
@@ -482,6 +482,16 @@ function renderGrid() {
     nodes.push(rowName("bass", "click to edit the bass line in the console"));
     for (let i = 0; i < STEPS_PER_BAR; i++) {
         const token = stepAt(riddim.bass, first + i) ?? ".";
+        const note = document.createElement("div");
+        note.className = /[1-7]/.test(token) ? "note on" : "note";
+        note.dataset.col = String(i);
+        note.textContent = token === "." ? "" : token;
+        nodes.push(note);
+    }
+    // The melodica's own line: the same cells with the note it plays.
+    nodes.push(rowName("lead", "click to edit the melodica line in the console"));
+    for (let i = 0; i < STEPS_PER_BAR; i++) {
+        const token = stepAt(riddim.lead, first + i) ?? ".";
         const note = document.createElement("div");
         note.className = /[1-7]/.test(token) ? "note on" : "note";
         note.dataset.col = String(i);

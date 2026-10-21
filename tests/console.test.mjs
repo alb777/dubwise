@@ -29,6 +29,13 @@ describe("parseCommand", () => {
     const cases = [
         ["", null],
         ["  play ", { type: "play" }],
+        ["play a dark steppers", { type: "compose", request: "a dark steppers" }],
+        [
+            "play beverly hills cop theme in the keyboard",
+            { type: "compose", request: "beverly hills cop theme in the keyboard" },
+        ],
+        ["play it", { type: "play" }],
+        ["play again", { type: "play" }],
         ["STOP", { type: "stop" }],
         ["mute bass", { type: "mute", channel: "bass", on: true }],
         ["unmute rim", { type: "mute", channel: "rim", on: false }],
@@ -68,6 +75,7 @@ describe("parseCommand", () => {
         ["log cabin dub", { type: "compose", request: "log cabin dub" }],
         ["bpm 76", { type: "line", line: "bpm 76" }],
         ["kick x...x...x...x...", { type: "line", line: "kick x...x...x...x..." }],
+        ["lead 1 . 2 . 3 . . . 1 . 2 . 3 . . .", { type: "line", line: "lead 1 . 2 . 3 . . . 1 . 2 . 3 . . ." }],
         ["bpm 76\nkey D minor", { type: "lines", lines: ["bpm 76", "key D minor"] }],
         ["dubwise 1\nbpm 70", { type: "riddim", text: "dubwise 1\nbpm 70" }],
     ];
@@ -175,6 +183,7 @@ describe("help and AI prompt", () => {
             "skank",
             "chords",
             "bass",
+            "lead",
             "echo",
             "spring",
         ]) {

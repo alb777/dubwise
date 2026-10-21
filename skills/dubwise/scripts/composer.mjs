@@ -8,7 +8,7 @@
  */
 import { ARTISTS, NOT_NAMES } from "./artists.mjs";
 import { editDistance } from "./distance.mjs";
-import { bassMidi, parse, STEPS_PER_BAR, serialize } from "./notation.mjs";
+import { bassMidi, leadMidi, parse, STEPS_PER_BAR, serialize } from "./notation.mjs";
 
 export { editDistance };
 
@@ -28,13 +28,14 @@ export { editDistance };
  * The optional fields are a reference's own signature: its key root, its chord movement as a notation chords line
  * (degrees per bar, up to eight bars), its hi-hat, rim and skank patterns, its echo time and its swing.
  * @typedef {{ style?: Style, bpm?: number, tempo?: "slow" | "fast", root?: string, mode?: Mode, echo?: Amount,
- *   density?: Density, bass?: BassMove, artist?: Artist, mixArtist?: Artist, matched: string[],
+ *   density?: Density, bass?: BassMove, lead?: boolean, artist?: Artist, mixArtist?: Artist, matched: string[],
  *   unknown: string[], guessed: { typed: string, name: string }[], blend?: "lead" | "mix" }} Intent
  * `artist` is the first name in the idea and sets drums and tempo; `mixArtist`, a second name as in
  * "Iration Steppas meets King Tubby", sets echo, bass and mood. `unknown` holds the phrases nothing
  * here understood, such as "martin campbell" in "Martin Campbell style". `guessed` lists names typed with a slip,
  * such as "lemi irie" for Liemy irie. `blend` is the role an unknown name takes next to a known one, as in
- * "Chitãozinho e Xororó meets Lee Perry": an AI's reading of it then plays that role.
+ * "Chitãozinho e Xororó meets Lee Perry": an AI's reading of it then plays that role. `lead` asks for a
+ * melodica line, and has nothing to do with the "lead" role of a blend.
  * @typedef {Pick<Intent, "style" | "tempo" | "mode" | "echo" | "density" | "bass">} Feel
  * @typedef {import("./intent.mjs").Reading} Reading
  */
@@ -321,16 +322,34 @@ const WORDS = {
     melodic: [
         "melodic",
         "melodico",
-        "melodica",
         "walking",
         "caminhante",
         "andando",
-        "melody",
-        "melodia",
         "melodioso",
         "melodiosa",
         "singing",
         "lyrical",
+    ],
+    // Words that ask for the riddim's own melodica line, read by the `lead` line of the notation.
+    lead: [
+        "melody",
+        "melodies",
+        "melodica",
+        "melodia",
+        "theme",
+        "themes",
+        "tema",
+        "keyboard",
+        "keyboards",
+        "teclado",
+        "keys",
+        "piano",
+        "organ",
+        "orgao",
+        "flute",
+        "flauta",
+        "solo",
+        "lead",
     ],
     root: [
         "rooted",
@@ -552,6 +571,7 @@ const WORD_FEELS = /** @type {Record<keyof typeof WORDS, import("./intent.mjs").
     busy: { density: "busy" },
     melodic: { bass: "melodic" },
     root: { bass: "root" },
+    lead: null,
     generic: null,
 });
 
@@ -578,7 +598,18 @@ export function knownFeelings() {
 }
 
 /** Intent fields that steer the riddim. Any one of them means the idea was understood in part. */
-const STEERING = /** @type {const} */ (["style", "bpm", "tempo", "root", "mode", "echo", "density", "bass", "artist"]);
+const STEERING = /** @type {const} */ ([
+    "style",
+    "bpm",
+    "tempo",
+    "root",
+    "mode",
+    "echo",
+    "density",
+    "bass",
+    "lead",
+    "artist",
+]);
 const SOLFEGE = /** @type {Record<string, string>} */ ({
     do: "C",
     re: "D",
@@ -730,6 +761,7 @@ export function readIntent(request) {
     else if (found("busy")) intent.density = "busy";
     if (found("root")) intent.bass = "root";
     else if (found("melodic")) intent.bass = "melodic";
+    if (found("lead")) intent.lead = true;
 
     const bpm = /(\d{2,3})\s*bpm|bpm\s*(\d{2,3})/.exec(text);
     if (bpm) {
@@ -929,6 +961,67 @@ function bassBar(random, style, density, move, chords, nextChord, key) {
     return tokens;
 }
 
+/** Where melodica notes start inside a bar, by density: few notes, and air between them for the echo. */
+const LEAD_RHYTHMS = {
+    sparse: [
+        [0, 8],
+        [0, 10],
+        [4, 12],
+        [0, 12],
+    ],
+    normal: [
+        [0, 6, 10],
+        [0, 8, 12],
+        [2, 8, 14],
+        [0, 4, 10],
+    ],
+    busy: [
+        [0, 3, 6, 10, 13],
+        [0, 4, 8, 11, 14],
+        [2, 5, 8, 12, 15],
+    ],
+};
+
+/**
+ * Move a degree by octaves until it sounds between C4 and C6, the register a melodica line lives in.
+ * @param {number} degree @param {{ root: string, mode: Mode }} key
+ */
+function fitLead(degree, key) {
+    let fitted = degree;
+    while ((leadMidi(degreeToken(fitted), key) ?? 72) < 60) fitted += 7;
+    while ((leadMidi(degreeToken(fitted), key) ?? 72) > 84) fitted -= 7;
+    return fitted;
+}
+
+/**
+ * One bar of melodica over its chords: a chord tone where the ear expects one, steps in between and air
+ * for the echo to bloom. A phrase of its own; nothing here holds or copies a real tune.
+ * @param {() => number} random @param {Density} density
+ * @param {{ degree: number, sign: string }[]} chords chord roots as scale degrees, as the bass reads them
+ * @param {{ root: string, mode: Mode }} key
+ */
+function leadBar(random, density, chords, key) {
+    const starts = pick(random, LEAD_RHYTHMS[density]);
+    const tokens = Array(STEPS_PER_BAR).fill(".");
+    let current = chords[0].degree + 4;
+    for (const [i, step] of starts.entries()) {
+        const under = Math.floor((step * chords.length) / STEPS_PER_BAR);
+        const root = chords[under].degree;
+        let degree;
+        if (i === 0) degree = root + 4;
+        else if (step % 4 === 0) degree = pick(random, [root, root + 2, root + 4]);
+        else degree = current + pick(random, [-2, -1, -1, 1, 1, 2]);
+        degree = fitLead(degree, key);
+        // A borrowed chord, such as the bVII of a major key, flattens or sharpens its root here too.
+        const borrowed = (((degree - root) % 7) + 7) % 7 === 0 ? chords[under].sign : "";
+        tokens[step] = borrowed + degreeToken(degree);
+        current = degree;
+        const gap = (starts[i + 1] ?? STEPS_PER_BAR) - step;
+        if (gap >= 5 && random() < 0.5) tokens[step + 1] = "-";
+    }
+    return tokens;
+}
+
 /** One bar of each signature pattern, by name. */
 const HATS = {
     eighths: "x.x.x.x.x.x.x.x.",
@@ -1015,6 +1108,8 @@ export function composeIntent(intent, seed, suggestion = {}, take = 0) {
     const spring = { low: 0.15, mid: 0.3, high: 0.45 }[echo];
     const drawnEcho = style === "steppers" && random() < 0.5 ? "1/4" : "3/16";
     const echoTime = mix?.echoTime ?? drawnEcho;
+    // Drawn after every other random pick, so an idea that does not ask for a melody composes exactly as it always did.
+    const lead = intent.lead ? chords.flatMap((bar) => leadBar(random, density, bar.map(rootOf), { root, mode })) : [];
 
     const bars = chords.length;
     /** A bar's pattern for every bar, the last one as `last`. @param {string} bar @param {string} [last] */
@@ -1034,6 +1129,7 @@ export function composeIntent(intent, seed, suggestion = {}, take = 0) {
         `skank  ${every(skank)}`,
         `chords ${chords.map((bar) => bar.join(" ")).join(" | ")}`,
         `bass   ${chunk(bass)}`,
+        lead.length ? `lead   ${chunk(lead)}` : "",
         `echo   ${echoTime} ${feedback}`,
         `spring ${spring}`,
     ]
@@ -1043,7 +1139,7 @@ export function composeIntent(intent, seed, suggestion = {}, take = 0) {
     const label = { "one-drop": "one drop", rockers: "rockers", steppers: "steppers" }[style];
     let summary = `${label} at ${bpm} bpm in ${root} ${mode}, ${move === "melodic" ? "melodic" : "rooted"} bass, ${
         { low: "dry", mid: "some", high: "wide" }[echo]
-    } echo`;
+    } echo${lead.length ? ", melodica line" : ""}`;
     const reader = suggestion.by ? `${suggestion.by}'s reading` : "the AI's reading";
     if (blend === "lead" && mix) {
         summary += `, drums and tempo from ${reader}, echo and bass from ${mix.name} (${mix.traits})`;
@@ -1128,7 +1224,8 @@ const STEP_VALUES = { ".": 0, x: 1, X: 2, o: 3 };
  * Change the riddim playing instead of composing a new one, for an idea made only of relative words, such as
  * "darker", "more echo", "a bit faster" or "more dark in the same style". Bass and chords are scale degrees in the
  * notation, so a new mode plays the same line in the other mode, and the drums change only for a new style or
- * density. Returns null when the idea brings something new (a name, an image, a word the composer does not know).
+ * density. Returns null when the idea brings something new (a name, an image, a melody, a word the composer
+ * does not know).
  * @param {string} request @param {string} text the notation of the riddim playing
  * @returns {{ text: string, summary: string } | null}
  */
@@ -1149,7 +1246,8 @@ export function refine(request, text) {
     // The request itself when nothing was turned around, since a key such as "E minor" is read in its own case.
     const intent = readIntent(words === normalize(request) ? request : words);
     const fresh = intent.unknown.some((phrase) => phrase.split(" ").some((word) => !RELATIVE.has(word)));
-    if (intent.artist || intent.bass || fresh || intent.matched.some((word) => IMAGE_ONLY.has(word))) return null;
+    if (intent.artist || intent.bass || intent.lead || fresh || intent.matched.some((word) => IMAGE_ONLY.has(word)))
+        return null;
     const { riddim } = parse(text);
     if (!riddim) return null;
     /** @type {string[]} */

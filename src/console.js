@@ -29,7 +29,7 @@ export const THEMES = /** @type {const} */ ({
     trinidad: "Trinidad & Tobago",
     poland: "Poland",
 });
-const SETTINGS = new Set(["bpm", "key", "swing", "bars", "echo", "spring", "bass", "chords", ...DRUMS]);
+const SETTINGS = new Set(["bpm", "key", "swing", "bars", "echo", "spring", "bass", "lead", "chords", ...DRUMS]);
 const COMMAND_WORDS = [
     "play",
     "stop",
@@ -73,7 +73,7 @@ function nearestCommand(word) {
 }
 
 export const COMMANDS = `commands
-  play, stop                start or stop the riddim
+  play, stop                start or stop the riddim; "play <idea>" writes the idea and starts it
   mute <ch>, unmute <ch>    channels: ${CHANNELS.join(" ")}
   solo <ch>, unsolo         hear one channel alone, or all again
   throw <ch>                send a channel into the echo for one beat
@@ -100,6 +100,7 @@ export const COMMANDS = `commands
 Describe a riddim in your own words and dubwise writes it, offline:
   inspired by Augustus Pablo / a dark steppers in D minor / Iration Steppas meets King Tubby
   (English, Portuguese or Spanish)
+Ask for a melody (a theme for the melodica) and the riddim gets a lead line of its own.
 Then steer the riddim playing: darker, a bit faster, more echo, busier, mais lento.
 Type a notation line (bpm 76, kick x...x...x...x...) to change the riddim while it plays,
 or paste a whole riddim that starts with "dubwise 1".`;
@@ -154,7 +155,13 @@ export function parseCommand(input) {
     const error = (message) => ({ type: "error", message });
 
     switch (word) {
-        case "play":
+        case "play": {
+            // "play a dark steppers" writes the idea and starts it. Bare "play", "play it" and "play again"
+            // only move the transport, whatever the selector did not already take.
+            const idea = arg.trim();
+            if (!idea || /^(it|this|that|again)$/i.test(idea)) return { type: "play" };
+            return { type: "compose", request: idea };
+        }
         case "stop":
         case "show":
         case "share":

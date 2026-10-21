@@ -77,7 +77,11 @@ await withPage("/", async (page) => {
     writeFileSync(join(outDir, "first-screen.png"), Buffer.from(first.data, "base64"));
     check("loads without errors", page.errors.length === 0, page.errors);
     check("draws 6 drum rows of 16 steps", (await evaluate("document.querySelectorAll('.cell').length")) === 96);
-    check("draws the bass row", (await evaluate("document.querySelectorAll('.note').length")) === 16);
+    check(
+        "draws the bass and lead rows",
+        (await evaluate("document.querySelectorAll('.note').length")) === 32 &&
+            (await evaluate("document.querySelectorAll('.row-name[data-setting=\"lead\"]').length")) === 1,
+    );
     check("draws 6 channel strips", (await evaluate("document.querySelectorAll('#strips .strip').length")) === 6);
     check("loads the one drop preset", (await evaluate("document.getElementById('bpm').value")) === "72");
     check(
@@ -147,6 +151,9 @@ await withPage("/", async (page) => {
     await evaluate(`document.querySelector('.row-name[data-setting="bass"]').click()`);
     const prefilled = await evaluate("document.getElementById('command').value");
     check("a row name puts its line in the console", prefilled.startsWith("bass . . 1"), prefilled);
+    await evaluate(`document.querySelector('.row-name[data-setting="lead"]').click()`);
+    const leadPrefilled = await evaluate("document.getElementById('command').value");
+    check("the lead row puts its line in the console", leadPrefilled.startsWith("lead . . ."), leadPrefilled);
     await evaluate("document.getElementById('command').value = ''");
 
     await evaluate("document.getElementById('play').click()");
@@ -156,6 +163,21 @@ await withPage("/", async (page) => {
         (await evaluate("document.getElementById('play').getAttribute('aria-pressed')")) === "true",
     );
     check("the playhead moves", (await evaluate("document.querySelectorAll('.now').length")) > 0);
+    await evaluate("document.getElementById('play').click()");
+
+    // "play <idea>" writes the idea, gives it a melodica line and starts it, from a stopped transport.
+    await evaluate(type("play steppers in D minor with a melody"));
+    await wait(600);
+    const leadHash = await evaluate("decodeURIComponent(location.hash)");
+    check(
+        "'play <idea>' writes the idea with a lead line and starts it",
+        (await evaluate("document.getElementById('play').getAttribute('aria-pressed')")) === "true" &&
+            leadHash.includes("lead   ") &&
+            (await evaluate(
+                `[...document.querySelectorAll("#log .ok")].map((l) => l.textContent).find((t) => t.includes("melodica line"))`,
+            )) !== undefined,
+        leadHash,
+    );
     await evaluate("document.getElementById('play').click()");
 
     // The melodica keys: put away until asked for, then played with the pointer and the computer keys.
