@@ -76,13 +76,13 @@ await withPage("/", async (page) => {
     const first = await send("Page.captureScreenshot", { format: "png" });
     writeFileSync(join(outDir, "first-screen.png"), Buffer.from(first.data, "base64"));
     check("loads without errors", page.errors.length === 0, page.errors);
-    check("draws 6 drum rows of 16 steps", (await evaluate("document.querySelectorAll('.cell').length")) === 96);
+    check("draws 7 drum rows of 16 steps", (await evaluate("document.querySelectorAll('.cell').length")) === 112);
     check(
         "draws the bass and lead rows",
         (await evaluate("document.querySelectorAll('.note').length")) === 32 &&
             (await evaluate("document.querySelectorAll('.row-name[data-setting=\"lead\"]').length")) === 1,
     );
-    check("draws 6 channel strips", (await evaluate("document.querySelectorAll('#strips .strip').length")) === 6);
+    check("draws 7 channel strips", (await evaluate("document.querySelectorAll('#strips .strip').length")) === 7);
     check("loads the one drop preset", (await evaluate("document.getElementById('bpm').value")) === "72");
     check(
         "shows bar tabs for a 2 bar riddim",
@@ -97,6 +97,12 @@ await withPage("/", async (page) => {
     await wait(400);
     const hash = await evaluate("decodeURIComponent(location.hash)");
     check("the edit lands in the share link", hash.includes("kick   x.......x"), hash);
+
+    await evaluate(`document.querySelector('.cell[data-drum="organ"][data-step="1"]').click()`);
+    check(
+        "the organ row takes a step",
+        (await evaluate(`document.querySelector('.cell[data-drum="organ"][data-step="1"]').dataset.value`)) === "1",
+    );
 
     await evaluate(type("bpm 80"));
     check("a console line changes the riddim", (await evaluate("document.getElementById('bpm').value")) === "80");

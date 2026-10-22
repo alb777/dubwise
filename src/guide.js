@@ -16,7 +16,7 @@ export const GUIDE = [
     },
     {
         title: "Edit the drums",
-        text: "Each row is a drum and each square a sixteenth note. Click a square to go through hit, accent and rest; the hat also has an open hit. Shift-click clears a square. The tabs above the grid switch bars, and follow keeps the view on the bar that plays.",
+        text: "Each row is a voice and each square a sixteenth note. Click a square to go through hit, accent and rest; the hat also has an open hit. Shift-click clears a square. The skank and the organ both stab the chord the chords line gives for that step: the skank chops it, the organ bubbles it. The tabs above the grid switch bars, and follow keeps the view on the bar that plays.",
         show: "#grid",
         try: ["kick x...x...x...x..."],
     },

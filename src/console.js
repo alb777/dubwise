@@ -5,7 +5,7 @@
 import { editDistance, readIntent } from "../skills/dubwise/scripts/composer.mjs";
 import { DRUMS, SPEC } from "../skills/dubwise/scripts/notation.mjs";
 
-export const CHANNELS = /** @type {const} */ (["kick", "rim", "hat", "bass", "skank", "siren", "keys"]);
+export const CHANNELS = /** @type {const} */ (["kick", "rim", "hat", "bass", "skank", "organ", "siren", "keys"]);
 export const PRESETS = /** @type {const} */ (["one-drop", "rockers", "steppers"]);
 /** Effects a selector plays live: tapped, held (spin) or switched on and off (phaser, kills). */
 export const EFFECTS = /** @type {const} */ ([

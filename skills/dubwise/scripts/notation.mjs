@@ -18,7 +18,7 @@
 export const VERSION = 1;
 export const STEPS_PER_BAR = 16;
 export const MAX_BARS = 8;
-export const DRUMS = /** @type {const} */ (["kick", "rim", "hat", "snare", "clap", "skank"]);
+export const DRUMS = /** @type {const} */ (["kick", "rim", "hat", "snare", "clap", "skank", "organ"]);
 /** What each echo repeat goes through: tape (Nux Tape Echo), space (Boss RE-2 + spring), bbd (analog), digital (open). */
 export const ECHO_MODELS = /** @type {const} */ (["tape", "space", "bbd", "digital"]);
 export const DEFAULT_BASE_URL = "https://alb777.github.io/dubwise/";
@@ -39,6 +39,7 @@ kick   <steps>        16 steps per bar, bars split by |: . rest, x hit, X accent
 rim    <steps>        same as kick
 hat    <steps>        same, plus o for an open hat
 skank  <steps>        chord chops, playing the chord the chords line gives for that step
+organ  <steps>        the organ bubble, same steps as the skank: rounder chord stabs, a hammond under the chops
 chords 1 | 4          1, 2 or 4 chord degrees per bar; diatonic to the key; m or M forces minor or major
 bass   <tokens>       16 tokens per bar, space separated: . rest, - holds the previous note,
                       a scale degree 1 to 7 with an optional b or # (b3), ' an octave up, , an octave down (5,)
@@ -98,7 +99,7 @@ export function emptyRiddim() {
         key: { root: "A", mode: "minor" },
         swing: 0,
         bars: 1,
-        drums: { kick: [], rim: [], hat: [], snare: [], clap: [], skank: [] },
+        drums: { kick: [], rim: [], hat: [], snare: [], clap: [], skank: [], organ: [] },
         bass: [],
         lead: [],
         chords: [],

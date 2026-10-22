@@ -181,6 +181,7 @@ describe("help and AI prompt", () => {
             "rim",
             "hat",
             "skank",
+            "organ",
             "chords",
             "bass",
             "lead",

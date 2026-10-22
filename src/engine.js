@@ -9,7 +9,18 @@ import { midiToFrequency } from "../skills/dubwise/scripts/notation.mjs";
 
 /** @typedef {import("../skills/dubwise/scripts/notation.mjs").EchoModel} EchoModel */
 
-export const TRACKS = /** @type {const} */ (["kick", "rim", "hat", "snare", "clap", "bass", "skank", "siren", "keys"]);
+export const TRACKS = /** @type {const} */ ([
+    "kick",
+    "rim",
+    "hat",
+    "snare",
+    "clap",
+    "bass",
+    "skank",
+    "organ",
+    "siren",
+    "keys",
+]);
 
 /** @typedef {typeof TRACKS[number]} Track */
 /**
@@ -19,7 +30,8 @@ export const TRACKS = /** @type {const} */ (["kick", "rim", "hat", "snare", "cla
  *   | { track: "clap", velocity: number }
  *   | { track: "bass", velocity: number, midi: number, steps: number }
  *   | { track: "keys", velocity: number, midi: number, steps: number }
- *   | { track: "skank", velocity: number, midis: number[] }} NoteEvent
+ *   | { track: "skank", velocity: number, midis: number[] }
+ *   | { track: "organ", velocity: number, midis: number[] }} NoteEvent
  */
 
 /** Mix level, echo send and spring send per track. */
@@ -31,6 +43,7 @@ const MIX = /** @type {Record<Track, { level: number, echo: number, spring: numb
     clap: { level: 0.5, echo: 0.3, spring: 0.4 },
     bass: { level: 0.85, echo: 0, spring: 0 },
     skank: { level: 0.42, echo: 0.22, spring: 0.3 },
+    organ: { level: 0.36, echo: 0.26, spring: 0.4 },
     siren: { level: 0.3, echo: 0.55, spring: 0.4 },
     keys: { level: 0.45, echo: 0.3, spring: 0.3 },
 });
@@ -439,6 +452,41 @@ export function createEngine(context, { seed = 7 } = {}) {
     }
 
     /**
+     * Organ bubble: a drawbar chord stabbed short, the hammond that bubbles under the skank in a riddim.
+     * Sines at the first four drawbars, a gentle highpass so it never fights the bass.
+     * @param {number} time @param {number} velocity @param {number[]} midis
+     */
+    function organ(time, velocity, midis) {
+        const low = context.createBiquadFilter();
+        low.type = "highpass";
+        low.frequency.value = 180;
+        const high = context.createBiquadFilter();
+        high.type = "lowpass";
+        high.frequency.value = 2800;
+        high.Q.value = 0.4;
+        const amp = envelope(time, velocity * 0.38, 0.16);
+        low.connect(high).connect(amp).connect(channels.organ.input);
+        for (const midi of midis) {
+            const frequency = midiToFrequency(midi);
+            for (const [ratio, gain] of /** @type {const} */ ([
+                [1, 0.5],
+                [2, 0.26],
+                [3, 0.13],
+                [4, 0.07],
+            ])) {
+                const osc = context.createOscillator();
+                osc.type = "sine";
+                osc.frequency.value = frequency * ratio;
+                const mix = context.createGain();
+                mix.gain.value = gain;
+                osc.connect(mix).connect(low);
+                osc.start(time);
+                osc.stop(time + 0.2);
+            }
+        }
+    }
+
+    /**
      * One blast of an air horn: a brassy chord of saws that bends up into pitch, with some grit.
      * @param {number} time @param {number} length
      */
@@ -495,6 +543,8 @@ export function createEngine(context, { seed = 7 } = {}) {
             }
             case "skank":
                 return skank(time, event.velocity, event.midis);
+            case "organ":
+                return organ(time, event.velocity, event.midis);
         }
     }
 

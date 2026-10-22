@@ -6,8 +6,8 @@ description: Writes and edits dub reggae riddims in dubwise's own step notation 
 # dubwise
 
 dubwise is a dub sound system in the browser. Its composer turns an idea into a playable riddim: drums, bass, skank,
-chords and an optional melodica line, plus tempo, key, swing and echo. This skill runs that same composer without a
-browser, offline and deterministic, and writes dubwise notation.
+organ bubble, chords and an optional melodica line, plus tempo, key, swing and echo. This skill runs that same composer
+without a browser, offline and deterministic, and writes dubwise notation.
 
 References are read as style traits only: a name gives drums, tempo and mood, never a real bassline or melody.
 

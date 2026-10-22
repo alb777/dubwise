@@ -55,10 +55,13 @@ export function eventsAt(riddim, step) {
     }
     const hat = stepAt(riddim.drums.hat, step);
     if (hat) events.push({ track: "hat", velocity: velocity(hat), open: hat === 3 });
-    const skank = stepAt(riddim.drums.skank, step);
-    if (skank) {
-        const chord = chordAt(riddim.chords, step) ?? "1";
-        events.push({ track: "skank", velocity: velocity(skank), midis: chordMidi(chord, riddim.key) });
+    // The skank and the organ bubble both stab the chord that the chords line gives for that step.
+    for (const track of /** @type {const} */ (["skank", "organ"])) {
+        const value = stepAt(riddim.drums[track], step);
+        if (value) {
+            const chord = chordAt(riddim.chords, step) ?? "1";
+            events.push({ track, velocity: velocity(value), midis: chordMidi(chord, riddim.key) });
+        }
     }
     const token = stepAt(riddim.bass, step);
     const midi = token === undefined ? null : bassMidi(token, riddim.key);

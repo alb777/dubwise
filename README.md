@@ -25,7 +25,7 @@ A dub sound system in your browser. Describe a riddim in your own words and it p
 
 ```
 play, stop                start or stop the riddim; play <idea> writes the idea and starts it
-mute <ch>, unmute <ch>    channels: kick rim hat bass skank siren keys
+mute <ch>, unmute <ch>    channels: kick rim hat bass skank organ siren keys
 solo <ch>, unsolo         hear one channel alone, or all again
 throw <ch>                send a channel into the echo for one beat
 filter <-1 to 1>          DJ filter: -1 dark, 0 open, 1 thin
@@ -76,7 +76,7 @@ echo   3/16 0.55
 spring 0.3
 ```
 
-Drums take 16 steps per bar (`.` rest, `x` hit, `X` accent, `o` open hat). Bass, chords and the melodica's `lead` line are scale degrees, so one line moves the riddim to any key; no lead line means no melody, and asking for a melody makes the composer write one. Type `notation` for the full reference.
+Drums take 16 steps per bar (`.` rest, `x` hit, `X` accent, `o` open hat). The `skank` and `organ` rows take the same steps and both play the chord the `chords` line gives for that step: a thin chop and a rounder organ bubble. Bass, chords and the melodica's `lead` line are scale degrees, so one line moves the riddim to any key; no lead line means no melody, and asking for a melody makes the composer write one. Type `notation` for the full reference.
 
 ## Agent skill
 

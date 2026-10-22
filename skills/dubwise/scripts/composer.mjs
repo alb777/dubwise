@@ -1296,6 +1296,7 @@ export function refine(request, text) {
             snare: riddim.drums.snare ?? [],
             clap: riddim.drums.clap ?? [],
             skank: steps(lines.skank, lines.skank),
+            organ: riddim.drums.organ ?? [],
         };
         const label = { "one-drop": "one drop", rockers: "rockers", steppers: "steppers" }[style];
         tell(JSON.stringify(drums) !== JSON.stringify(riddim.drums), `${label} drums, ${density}`);

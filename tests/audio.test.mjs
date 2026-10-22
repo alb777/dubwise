@@ -85,6 +85,11 @@ describe("sequencer", () => {
         assert.deepEqual(eventsAt(riddim, 0), [{ track: "skank", velocity: 0.8, midis: [60, 64, 67] }]);
     });
 
+    it("bubbles the chord on the organ row", () => {
+        const riddim = riddimOf("dubwise 1\nkey C major\norgan x...............\n");
+        assert.deepEqual(eventsAt(riddim, 0), [{ track: "organ", velocity: 0.8, midis: [60, 64, 67] }]);
+    });
+
     it("turns lead holds into longer melodica notes", () => {
         const riddim = riddimOf("dubwise 1\nkey C major\nlead 1 . . 1 . . 3 . 5 . . . 5 - 3 .\n");
         assert.deepEqual(eventsAt(riddim, 0), [{ track: "keys", velocity: 0.85, midi: 60, steps: 1 }]);
@@ -101,12 +106,22 @@ describe("audio", () => {
         assert.ok(result.db > -35 && result.db < -8, `rms ${result.db.toFixed(1)} dBFS`);
     });
 
-    for (const track of ["kick", "rim", "hat", "snare", "clap", "bass", "skank"]) {
+    it("keeps the organ bubble under the skank without clipping", async () => {
+        const riddim = riddimOf(
+            "dubwise 1\nbpm 72\nkick   ........x.......\nhat    x.x.x.x.x.x.x.x.\nskank  ....x.......x...\norgan  ..x...x...x...x.\nchords 1\nbass   1 . . 1 . . 3 . 5 - . . 4 . 3 .\n",
+        );
+        const result = measure(await render(riddim, { seconds: 6.7 }));
+        assert.equal(result.nan, false);
+        assert.ok(result.peak <= 1, `peak ${result.peak}`);
+        assert.ok(result.db > -35 && result.db < -8, `rms ${result.db.toFixed(1)} dBFS`);
+    });
+
+    for (const track of ["kick", "rim", "hat", "snare", "clap", "bass", "skank", "organ"]) {
         it(`${track} is audible on its own`, async () => {
-            const riddim =
-                track === "snare" || track === "clap"
-                    ? riddimOf(`dubwise 1\nbpm 80\n${track} x...............\necho 1/4 0\nspring 0\n`)
-                    : preset("steppers");
+            const alone = track === "snare" || track === "clap" || track === "organ";
+            const riddim = alone
+                ? riddimOf(`dubwise 1\nbpm 80\n${track} x...............\necho 1/4 0\nspring 0\n`)
+                : preset("steppers");
             const buffer = await render(riddim, { seconds: 3.3, configure: soloing(track) });
             const result = measure(buffer, 0.05);
             assert.ok(result.db > -45, `${track} rms ${result.db.toFixed(1)} dBFS`);
