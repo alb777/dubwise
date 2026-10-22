@@ -1037,6 +1037,8 @@ const SKANKS = {
     bubble: ".xx..xx..xx..xx.",
     none: "................",
 };
+/** The organ's bubble, staggered against the skank: on the offbeats, or on 16ths where the skank owns the offbeats. */
+const ORGANS = { eighths: "..x...x...x...x.", sixteenths: ".xx..xx..xx..xx." };
 
 /**
  * One bar of each drum for a style at a density, or in a reference's own patterns. The hat's last bar opens on the
@@ -1055,7 +1057,9 @@ function drumLines(style, density, signature = {}) {
     const lastHat = keep ? hat : `${hat.slice(0, open)}o${hat.slice(open + 1)}`;
     const skank =
         SKANKS[signature.skank ?? (style === "steppers" ? "offbeat" : density === "busy" ? "double" : "chop")];
-    return { kick, rim, hat, lastHat, skank };
+    // The organ bubbles under the skank, so it moves to 16ths when the skank already sits on every offbeat.
+    const organ = skank === SKANKS.offbeat ? ORGANS.sixteenths : ORGANS.eighths;
+    return { kick, rim, hat, lastHat, skank, organ };
 }
 
 /**
@@ -1097,7 +1101,7 @@ export function composeIntent(intent, seed, suggestion = {}, take = 0) {
     const signature = intent.density ? {} : { hat: artist?.hat, rim: artist?.rim, skank: artist?.skank };
     const swing = intent.style ? STYLE_SWING[style] : (artist?.swing ?? STYLE_SWING[style]);
 
-    const { kick, rim, hat, lastHat, skank } = drumLines(style, density, signature);
+    const { kick, rim, hat, lastHat, skank, organ } = drumLines(style, density, signature);
     /** A chord token's root degree and its "b" or "#", as "b7M" gives 7 and "b". @param {string} chord */
     const rootOf = (chord) => ({ degree: Number(chord.replace(/\D/g, "")), sign: /^[b#]/.exec(chord)?.[0] ?? "" });
     const bass = chords.flatMap((bar, b) => {
@@ -1127,6 +1131,7 @@ export function composeIntent(intent, seed, suggestion = {}, take = 0) {
         `rim    ${every(rim)}`,
         `hat    ${every(hat, lastHat)}`,
         `skank  ${every(skank)}`,
+        `organ  ${every(organ)}`,
         `chords ${chords.map((bar) => bar.join(" ")).join(" | ")}`,
         `bass   ${chunk(bass)}`,
         lead.length ? `lead   ${chunk(lead)}` : "",
@@ -1296,7 +1301,7 @@ export function refine(request, text) {
             snare: riddim.drums.snare ?? [],
             clap: riddim.drums.clap ?? [],
             skank: steps(lines.skank, lines.skank),
-            organ: riddim.drums.organ ?? [],
+            organ: steps(lines.organ, lines.organ),
         };
         const label = { "one-drop": "one drop", rockers: "rockers", steppers: "steppers" }[style];
         tell(JSON.stringify(drums) !== JSON.stringify(riddim.drums), `${label} drums, ${density}`);

@@ -92,6 +92,13 @@ describe("composing", () => {
         for (const beat of [0, 4, 8, 12]) assert.equal(steppers[beat], 1);
     });
 
+    it("bubbles the organ under the skank, on 16ths where the skank owns the offbeats", () => {
+        const oneDrop = riddimFor("one drop").riddim.drums;
+        assert.deepEqual(oneDrop.organ.slice(0, 8), [0, 0, 1, 0, 0, 0, 1, 0], "the organ answers the chops");
+        const steppers = riddimFor("steppers").riddim.drums;
+        assert.deepEqual(steppers.organ.slice(0, 4), [0, 1, 1, 0], "16ths where the skank sits on the offbeats");
+    });
+
     it("blends two references, X meets Y", () => {
         const intent = readIntent("Iration Steppas meets King Tubby");
         assert.equal(intent.artist?.name, "Iration Steppas");
@@ -428,6 +435,10 @@ describe("changing the riddim playing", () => {
         assert.ok(sparser.drums.hat.filter(Boolean).length < base.drums.hat.filter(Boolean).length);
         assert.deepEqual(sparser.drums.kick, base.drums.kick);
         assert.deepEqual(changed("steppers now").riddim.drums.kick.slice(0, 4), [1, 0, 0, 0]);
+    });
+
+    it("brings the organ bubble along with a drum change", () => {
+        assert.deepEqual(changed("steppers now").riddim.drums.organ.slice(0, 4), [0, 1, 1, 0]);
     });
 
     it("says when the riddim is already so, and how to make it darker", () => {
