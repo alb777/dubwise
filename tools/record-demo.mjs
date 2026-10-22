@@ -10,7 +10,7 @@ import { join } from "node:path";
 import { ROOT, withPage } from "../tests/browser/cdp.mjs";
 
 const WIDTH = 1280;
-const HEIGHT = 1400;
+const HEIGHT = 1440;
 const work = join(tmpdir(), `dubwise-demo-${process.pid}`);
 mkdirSync(work, { recursive: true });
 
