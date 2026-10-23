@@ -50,3 +50,4 @@ A dub sound system in the browser, live at https://alb777.github.io/dubwise/. Pl
 12. A new theme needs a `[data-theme]` block in `styles.css`, an entry in `THEMES` and a pass of the WCAG contrast test in `tests/themes.test.mjs`.
 13. `skills/dubwise/cli.mjs` starts with `@ts-nocheck` on purpose: `tsconfig` has `"types": []`, so Node's process, stdin and fs are untyped there; the composer and notation it imports stay checked.
 14. `tools/record-demo.mjs` records at a fixed 1280x1440 window and throws when the console falls below it: raise `HEIGHT` whenever the layout grows, as a new grid row did. It writes `docs/demo.mp4` and `docs/demo.gif`; `tools/record-video.mjs` writes the same files at 1140 px and is the stale copy of it.
+15. A fixed wait in a browser check races the page: the first idea after a reload spends 2 to 3 s parsing `lexicon.bin`, so `tests/browser/ui.mjs` polls with its `until` helper instead of sleeping before a check.
