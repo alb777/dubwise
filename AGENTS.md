@@ -45,7 +45,7 @@ A dub sound system in the browser, live at https://alb777.github.io/dubwise/. Pl
 7. WebLLM serves one request at a time per model, so a hung answer blocks every later idea. AI timeouts terminate the worker instead of interrupting it.
 8. CI runs Node 24: keep the test glob quoted (`node --test "tests/*.test.mjs"`) or it finds no tests.
 9. Bass, the lead line and chords are scale degrees, so key and mode changes keep them. References carry style traits only, never a real bassline or melody.
-10. WebGPU on Linux needs Vulkan, which can break video in a whole browser. Suggest it only for a separate profile, never an everyday one. Keep `DUBWISE_AI_PROFILE` on disk, not on a RAM tmpfs `/tmp`.
+10. WebGPU on Linux needs Vulkan, which can break video in a whole browser. Suggest it only for a separate profile, never an everyday one. Keep `DUBWISE_AI_PROFILE` on disk, not on a RAM tmpfs `/tmp`. Without the flags Brave here exposes `navigator.gpu` but `requestAdapter()` returns null, so the app says "no WebGPU"; probe it from a secure context (`127.0.0.1` or https), never `about:blank`.
 11. Headless Chrome reports `hover: none`, so hover-only UI such as `.keys-hint` never shows in screenshots.
 12. A new theme needs a `[data-theme]` block in `styles.css`, an entry in `THEMES` and a pass of the WCAG contrast test in `tests/themes.test.mjs`.
 13. `skills/dubwise/cli.mjs` starts with `@ts-nocheck` on purpose: `tsconfig` has `"types": []`, so Node's process, stdin and fs are untyped there; the composer and notation it imports stay checked.

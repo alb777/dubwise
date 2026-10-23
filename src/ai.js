@@ -107,9 +107,11 @@ const WARM_UP_SECONDS = 120;
 /**
  * How long loading the in-browser model may go without a progress report: to the first one, which comes once the
  * library and the model's code are in, and then between two. WebLLM reports each part of the model once it is in,
- * four parts downloading at a time, so a slow connection can go minutes between two.
+ * four parts downloading at a time, so a slow connection can go minutes between two. The first report waits on the
+ * library and the model's wasm, about 14 MB from the network, so it gets the same time as the rest: on a line that
+ * fetches 225 KB/s, as one measured 2026-10-23, that took 90 s and a 60 s limit gave up before the download began.
  */
-const LOAD_SILENCE = { first: 60, next: 300 };
+const LOAD_SILENCE = { first: 300, next: 300 };
 
 /**
  * Wait for `work`, which calls the `moved` it is handed as it makes progress, and fail once it goes silent for too
