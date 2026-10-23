@@ -63,6 +63,15 @@ const type = (line) => `(() => {
 })()`;
 const lastLog = `(() => { const l = document.getElementById("log").lastElementChild; return l ? { text: l.textContent, kind: l.className } : null; })()`;
 
+/** Wait for `expression` to turn true, so a check never races work the page still has to do. */
+const until = async (evaluate, expression, limit = 15000) => {
+    for (let waited = 0; waited < limit; waited += 100) {
+        if (await evaluate(expression)) return true;
+        await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    return false;
+};
+
 await withPage("/", async (page) => {
     const { evaluate, wait, send } = page;
     // A clean shot of the first screen, before any test input, for the README.
@@ -383,10 +392,9 @@ await withPage("/", async (page) => {
     // The AI reader: offered when the word lists miss an idea, set up in its dialog, then reading what they miss.
     const lines = (kind) => `[...document.querySelectorAll("#log .${kind}")].map((l) => l.textContent)`;
     await evaluate(type("Martin Campbell style"));
-    await wait(300);
     check(
         "with the AI off, an idea it could read brings a hint",
-        (await evaluate(lines("dim"))).some((l) => l.includes("an AI can read ideas like this one")),
+        await until(evaluate, `${lines("dim")}.some((l) => l.includes("an AI can read ideas like this one"))`),
     );
     await evaluate("document.getElementById('ai-toggle').click()");
     await wait(300);
