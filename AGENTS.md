@@ -14,7 +14,7 @@ A dub sound system in the browser, live at https://alb777.github.io/dubwise/. Pl
 ## Commands
 
 1. `npm ci`: install the dev tooling (verified 2026-10-17).
-2. `npm test`: all unit tests (verified 2026-10-21, 417 passing).
+2. `npm test`: all unit tests (verified 2026-10-23, 422 passing).
 3. `npm run check`: `tsc` on the JSDoc types plus `biome check .` (verified 2026-10-21).
 4. `npm run check:browser`: audio and UI checks in a headless browser, Brave by default, `BROWSER=google-chrome` as in CI (verified 2026-10-21 with Brave).
 5. `npm run sw:version`: restamp the service worker cache names (verified 2026-10-21, restamped for the lead line).
