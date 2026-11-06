@@ -28,6 +28,9 @@ jobs:
       role: ${{ steps.pick.outputs.role }}
       issue: ${{ steps.pick.outputs.issue }}
     steps:
+      - name: checkout
+        uses: actions/checkout@v6
+
       - name: pick the role
         id: pick
         env:
