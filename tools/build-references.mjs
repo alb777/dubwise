@@ -5,7 +5,7 @@
 // - src/selector-content.js, what the selector says.
 // Each holds its content as an obfuscated string, so it does not read as plain text here. It is not encrypted: the
 // browser has to read it, so anyone can.
-// Usage: node tools/build-references.mjs [source folder]   (default ~/dev/dubwise-data, whose artists.mjs must
+// Usage: node tools/build-references.mjs [source folder]   (default: a private folder outside this repo, whose artists.mjs must
 // `export const ARTISTS = [...]` and may `export const NOT_NAMES = [...]`, and whose selector.mjs must
 // `export const SELECTOR = {...}`), then npm run sw:version.
 import { readFileSync, writeFileSync } from "node:fs";
