@@ -1,0 +1,109 @@
+name: agent run
+
+# Reusable workflow: one role, one run, one concurrency slot.
+# Private org repos call it as
+#   uses: betoailabs/hq/.github/workflows/agent-run.yml@main
+# and hq itself calls it locally with ./.github/workflows/agent-run.yml.
+
+on:
+  workflow_call:
+    inputs:
+      role:
+        description: Agent id from .opencode/agents/<role>.md
+        required: true
+        type: string
+      prompt:
+        description: Instruction for this run. Empty means use .betoai/tasks/<role>.md
+        required: false
+        type: string
+        default: ""
+      issue:
+        description: Issue or PR number this run works on
+        required: false
+        type: string
+        default: ""
+      agent_name:
+        description: Agent name for the git author, defaults to the role
+        required: false
+        type: string
+        default: ""
+      timeout:
+        description: Job timeout in minutes
+        required: false
+        type: number
+        default: 30
+    secrets:
+      OPENCODE_GO_API_KEY:
+        required: true
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  actions: read
+
+jobs:
+  agent:
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ inputs.timeout }}
+    concurrency:
+      group: betoai-${{ github.repository }}-${{ inputs.role }}
+      cancel-in-progress: false
+    steps:
+      - name: checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: git identity
+        env:
+          AGENT_NAME: ${{ inputs.agent_name || inputs.role }}
+          ROLE: ${{ inputs.role }}
+        run: |
+          git config --global user.name "${AGENT_NAME} (agent)"
+          git config --global user.email "${ROLE}@agents.betoai"
+
+      - name: resolve prompt
+        id: task
+        env:
+          ROLE: ${{ inputs.role }}
+          PROMPT_IN: ${{ inputs.prompt }}
+          ISSUE: ${{ inputs.issue }}
+        run: |
+          set -eu
+          file=".betoai/tasks/${ROLE}.md"
+          issue_line=""
+          if [ -n "${ISSUE}" ]; then
+            issue_line="Read issue #${ISSUE} with gh issue view ${ISSUE} before changing anything."
+          fi
+          if [ -n "${PROMPT_IN}" ]; then
+            body="${PROMPT_IN}"
+          elif [ -f "$file" ]; then
+            body=$(cat "$file")
+          elif [ -n "${ISSUE}" ]; then
+            body="${issue_line}"
+            issue_line=""
+          else
+            echo "no prompt input, no $file and no issue" >&2
+            exit 1
+          fi
+          if [ -n "${issue_line}" ]; then
+            body=$(printf '%s\n\n%s' "$body" "$issue_line")
+          fi
+          {
+            echo "body<<PROMPT_EOF"
+            printf '%s\n' "$body"
+            echo "PROMPT_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: run agent
+        uses: anomalyco/opencode/github@latest
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_GO_API_KEY }}
+        with:
+          model: opencode-go/deepseek-v4.1-flash
+          agent: ${{ inputs.role }}
+          use_github_token: true
+          prompt: ${{ steps.task.outputs.body }}

@@ -9,6 +9,7 @@ A dub sound system in the browser, live at https://alb777.github.io/dubwise/. Pl
 3. `skills/dubwise/scripts/`: the core the app and the tests share. `notation.mjs` (riddim text format, `DRUMS`), `composer.mjs` (idea to riddim, `refine`), `intent.mjs`, `lexicon.mjs`, `artists.mjs` (generated). Beside them, `SKILL.md` and `cli.mjs` are the agent skill and its command line, and `llms.txt` at the root points models at the app.
 4. `skills/dubwise/assets/`: preset riddims and `lexicon.bin`, the generated word map.
 5. `tests/*.test.mjs`: node:test, audio rendered offline with node-web-audio-api. `tests/browser/`: headless Chromium checks over the DevTools protocol (`cdp.mjs`), screenshots in the gitignored `tests/browser/out/`.
+7. `.github/workflows/agent-run.yml` is the team runner (copy of hq's, on `ubuntu-latest`), with `betoai-schedule.yml` for the weekly `ops` pass and `betoai-dispatch.yml` for an issue labeled `agent:<role>` or an owner `/oc` comment. Roles live in `.opencode/agents/`, prompts in `.betoai/tasks/`.
 6. `tools/`: `sw-version.mjs`, `build-lexicon.mjs`, `build-references.mjs`, demo recorders (`record-*.mjs`). `docs/`: demo video, GIF and screenshot.
 
 ## Commands
