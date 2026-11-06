@@ -9,8 +9,8 @@ A dub sound system in the browser, live at https://alb777.github.io/dubwise/. Pl
 3. `skills/dubwise/scripts/`: the core the app and the tests share. `notation.mjs` (riddim text format, `DRUMS`), `composer.mjs` (idea to riddim, `refine`), `intent.mjs`, `lexicon.mjs`, `artists.mjs` (generated). Beside them, `SKILL.md` and `cli.mjs` are the agent skill and its command line, and `llms.txt` at the root points models at the app.
 4. `skills/dubwise/assets/`: preset riddims and `lexicon.bin`, the generated word map.
 5. `tests/*.test.mjs`: node:test, audio rendered offline with node-web-audio-api. `tests/browser/`: headless Chromium checks over the DevTools protocol (`cdp.mjs`), screenshots in the gitignored `tests/browser/out/`.
-7. This repo is public and intentionally has no autonomous agent team: no ops role, no scheduled run, no agent workflows. Public repos would expose agent infrastructure and let outside traffic reach it. Code work here is by hand or by a manual run someone starts on purpose.
 6. `tools/`: `sw-version.mjs`, `build-lexicon.mjs`, `build-references.mjs`, demo recorders (`record-*.mjs`). `docs/`: demo video, GIF and screenshot.
+7. This repo is public and intentionally has no autonomous agent team: no ops role, no scheduled run, no agent workflows. Public repos would expose agent infrastructure, and on a GitHub-hosted runner nobody can inspect the machine. Code work here is by hand or from a manual run someone starts on purpose.
 
 ## Commands
 
