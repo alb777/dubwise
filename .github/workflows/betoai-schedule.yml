@@ -1,0 +1,27 @@
+name: betoai schedule
+
+on:
+  workflow_dispatch:
+    inputs:
+      role:
+        description: Agent role to run
+        required: false
+        type: string
+        default: ops
+  schedule:
+    # Saturday 06:07 UTC. Public repo, GitHub-hosted runner, so no queue to avoid.
+    - cron: "7 6 * * 6"
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  actions: read
+
+jobs:
+  ops:
+    uses: ./.github/workflows/agent-run.yml
+    with:
+      role: ${{ inputs.role || 'ops' }}
+      timeout: 25
+    secrets: inherit
