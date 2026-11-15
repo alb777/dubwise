@@ -34,18 +34,18 @@ export const TRACKS = /** @type {const} */ ([
  *   | { track: "organ", velocity: number, midis: number[] }} NoteEvent
  */
 
-/** Mix level, echo send and spring send per track. */
-const MIX = /** @type {Record<Track, { level: number, echo: number, spring: number }>} */ ({
-    kick: { level: 0.95, echo: 0, spring: 0.04 },
-    rim: { level: 0.5, echo: 0.2, spring: 0.35 },
-    hat: { level: 0.45, echo: 0.05, spring: 0.1 },
-    snare: { level: 0.55, echo: 0.25, spring: 0.35 },
-    clap: { level: 0.5, echo: 0.3, spring: 0.4 },
-    bass: { level: 0.85, echo: 0, spring: 0 },
-    skank: { level: 0.42, echo: 0.22, spring: 0.3 },
-    organ: { level: 0.36, echo: 0.26, spring: 0.4 },
-    siren: { level: 0.3, echo: 0.55, spring: 0.4 },
-    keys: { level: 0.45, echo: 0.3, spring: 0.3 },
+/** Mix level, echo send, spring send and stereo pan per track (-1 left, 1 right). */
+const MIX = /** @type {Record<Track, { level: number, echo: number, spring: number, pan: number }>} */ ({
+    kick: { level: 0.95, echo: 0, spring: 0.04, pan: 0 },
+    rim: { level: 0.5, echo: 0.2, spring: 0.35, pan: -0.3 },
+    hat: { level: 0.45, echo: 0.05, spring: 0.1, pan: 0.35 },
+    snare: { level: 0.55, echo: 0.25, spring: 0.35, pan: 0 },
+    clap: { level: 0.5, echo: 0.3, spring: 0.4, pan: 0.2 },
+    bass: { level: 0.85, echo: 0, spring: 0, pan: 0 },
+    skank: { level: 0.42, echo: 0.22, spring: 0.3, pan: -0.15 },
+    organ: { level: 0.36, echo: 0.26, spring: 0.4, pan: 0.25 },
+    siren: { level: 0.3, echo: 0.55, spring: 0.4, pan: 0 },
+    keys: { level: 0.45, echo: 0.3, spring: 0.3, pan: -0.2 },
 });
 
 const FILTER_LOW = 20000;
@@ -124,6 +124,23 @@ const ECHO_HEADS = {
 export function createEngine(context, { seed = 7 } = {}) {
     const random = mulberry32(seed);
 
+    /**
+     * Place a mono node in the stereo field with fixed gains per side: unity at center, the far side scaled down.
+     * A StereoPanner would be -6 dB at center in node-web-audio-api and -3 dB in browsers, so this keeps the levels
+     * the same in both.
+     * @param {AudioNode} source @param {number} pan -1 left to 1 right @param {AudioNode} target
+     */
+    function panTo(source, pan, target) {
+        const left = context.createGain();
+        left.gain.value = Math.min(1, 1 - pan);
+        const right = context.createGain();
+        right.gain.value = Math.min(1, 1 + pan);
+        const merger = context.createChannelMerger(2);
+        source.connect(left).connect(merger, 0, 0);
+        source.connect(right).connect(merger, 0, 1);
+        merger.connect(target);
+    }
+
     // Master: mix bus, kill switches, DJ filter (lowpass then highpass), phaser, a gentle limiter, then the deck.
     const mixBus = context.createGain();
     const lowKill = context.createBiquadFilter();
@@ -181,10 +198,13 @@ export function createEngine(context, { seed = 7 } = {}) {
     limiter.connect(master).connect(clipIn).connect(clipper).connect(deck).connect(deckOut);
     deckOut.connect(context.destination);
 
-    // The echo: delay -> tone -> low cut -> saturation -> feedback -> delay, colored by the head in use.
+    // The echo is ping-pong: the loop runs delay -> tone -> low cut -> saturation -> feedback -> pong -> delay, so each
+    // repeat lands on alternate sides. One echo time per repeat, and the loop gain is the feedback squared.
     const echoIn = context.createGain();
     const delay = context.createDelay(2);
     delay.delayTime.value = 0.375;
+    const pong = context.createDelay(2);
+    pong.delayTime.value = 0.375;
     const tone = context.createBiquadFilter();
     tone.type = "lowpass";
     tone.frequency.value = ECHO_HEADS.tape.tone;
@@ -196,12 +216,15 @@ export function createEngine(context, { seed = 7 } = {}) {
     tape.curve = tanhCurve(1.4);
     tape.oversample = "2x";
     const feedback = context.createGain();
-    feedback.gain.value = 0.5;
+    feedback.gain.value = 0.25;
+    echoIn.connect(delay);
+    delay.connect(tone).connect(lowCut).connect(tape).connect(feedback).connect(pong).connect(delay);
     const echoReturn = context.createGain();
     echoReturn.gain.value = 0.85;
-    echoIn.connect(delay);
-    delay.connect(tone).connect(lowCut).connect(tape).connect(feedback).connect(delay);
-    tape.connect(echoReturn).connect(mixBus);
+    panTo(tape.connect(echoReturn), -0.6, mixBus);
+    const pongReturn = context.createGain();
+    pongReturn.gain.value = 0.85;
+    panTo(pong.connect(pongReturn), 0.6, mixBus);
     // The space head's bloom: repeats also run through a spring tank of their own, outside the feedback loop,
     // so the desk's spring knob and the echo head's wash stay apart.
     const spaceWash = context.createGain();
@@ -218,7 +241,9 @@ export function createEngine(context, { seed = 7 } = {}) {
         lfo.frequency.value = rate;
         const amount = context.createGain();
         amount.gain.value = depth;
-        lfo.connect(amount).connect(delay.delayTime);
+        lfo.connect(amount);
+        amount.connect(delay.delayTime);
+        amount.connect(pong.delayTime);
         lfo.start();
         wobble.push(amount);
     }
@@ -264,7 +289,8 @@ export function createEngine(context, { seed = 7 } = {}) {
         echoSend.gain.value = MIX[track].echo;
         const springSend = context.createGain();
         springSend.gain.value = MIX[track].spring;
-        input.connect(level).connect(mute).connect(mixBus);
+        input.connect(level).connect(mute);
+        panTo(mute, MIX[track].pan, mixBus);
         mute.connect(echoSend).connect(echoIn);
         mute.connect(springSend).connect(springIn);
         channels[track] = { input, mute, echoSend, springSend, echoBase: MIX[track].echo };
@@ -725,7 +751,8 @@ export function createEngine(context, { seed = 7 } = {}) {
         setEcho(seconds, amount, time = context.currentTime) {
             Object.assign(echoSettings, { seconds: Math.min(seconds, 1.9), amount: Math.min(amount, 0.95) });
             delay.delayTime.setTargetAtTime(echoSettings.seconds, time, 0.08);
-            feedback.gain.setTargetAtTime(echoSettings.amount, time, 0.02);
+            pong.delayTime.setTargetAtTime(echoSettings.seconds, time, 0.08);
+            feedback.gain.setTargetAtTime(echoSettings.amount ** 2, time, 0.02);
         },
         /**
          * The head the repeats go through: how dark and wobbly each pass gets, and whether every repeat blooms
@@ -751,8 +778,10 @@ export function createEngine(context, { seed = 7 } = {}) {
          * @param {boolean} on @param {number} [time]
          */
         setSpin(on, time = context.currentTime) {
-            feedback.gain.setTargetAtTime(on ? 1.1 : echoSettings.amount, time, on ? 0.1 : 0.05);
-            delay.delayTime.setTargetAtTime(echoSettings.seconds * (on ? 0.6 : 1), time, on ? 0.8 : 0.3);
+            feedback.gain.setTargetAtTime(on ? 1.21 : echoSettings.amount ** 2, time, on ? 0.1 : 0.05);
+            const seconds = echoSettings.seconds * (on ? 0.6 : 1);
+            delay.delayTime.setTargetAtTime(seconds, time, on ? 0.8 : 0.3);
+            pong.delayTime.setTargetAtTime(seconds, time, on ? 0.8 : 0.3);
         },
         /** Kick the spring tank: a crash of noise and a thump straight into the springs. @param {number} [time] */
         springCrash(time = context.currentTime) {

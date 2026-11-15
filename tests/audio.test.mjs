@@ -124,10 +124,28 @@ describe("audio", () => {
                 : preset("steppers");
             const buffer = await render(riddim, { seconds: 3.3, configure: soloing(track) });
             const result = measure(buffer, 0.05);
-            assert.ok(result.db > -45, `${track} rms ${result.db.toFixed(1)} dBFS`);
+            // Panned tracks lose about 1 dB of average level to the far side, so the floor sits a little lower.
+            assert.ok(result.db > -46, `${track} rms ${result.db.toFixed(1)} dBFS`);
             assert.equal(result.nan, false);
         });
     }
+
+    it("bounces each echo repeat to the other side", async () => {
+        const riddim = riddimOf(`dubwise 1\nbpm 80\nrim x...............\necho 1/4 0.5\nspring 0\n`);
+        const buffer = await render(riddim, { seconds: 3.3, configure: soloing("rim") });
+        const energy = (channel, from, to) => {
+            const data = buffer.getChannelData(channel);
+            let sum = 0;
+            for (let i = Math.floor(from * buffer.sampleRate); i < Math.floor(to * buffer.sampleRate); i++) {
+                sum += data[i] * data[i];
+            }
+            return sum;
+        };
+        const first = [0.7, 0.95];
+        const second = [1.45, 1.7];
+        assert.ok(energy(1, ...first) < energy(0, ...first) * 0.5, "first repeat should sit left");
+        assert.ok(energy(0, ...second) < energy(1, ...second) * 0.5, "second repeat should sit right");
+    });
 
     it("goes silent when every track is muted, sends included", async () => {
         const buffer = await render(preset("steppers"), { seconds: 2, configure: soloing("none") });
