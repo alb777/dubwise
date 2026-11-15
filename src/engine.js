@@ -766,6 +766,8 @@ export function createEngine(context, { seed = 7 } = {}) {
         /** Throw a track into the echo while `on`. @param {Track} track @param {boolean} on @param {number} [time] */
         setThrow(track, on, time = context.currentTime) {
             const channel = channels[track];
+            // The anchor keeps node-web-audio-api from jumping the send before the throw (see the gotcha in AGENTS.md).
+            channel.echoSend.gain.setValueAtTime(channel.echoSend.gain.value, time);
             channel.echoSend.gain.setTargetAtTime(on ? 1 : channel.echoBase, time, 0.01);
         },
         /**
@@ -802,10 +804,14 @@ export function createEngine(context, { seed = 7 } = {}) {
          * @param {boolean} on @param {number} [time]
          */
         setSpin(on, time = context.currentTime) {
+            // The anchors keep node-web-audio-api from jumping the loop before the spin (see the gotcha in AGENTS.md).
+            feedback.gain.setValueAtTime(feedback.gain.value, time);
             feedback.gain.setTargetAtTime(on ? 1.21 : echoSettings.amount ** 2, time, on ? 0.1 : 0.05);
             const seconds = echoSettings.seconds * (on ? 0.6 : 1);
-            delay.delayTime.setTargetAtTime(seconds, time, on ? 0.8 : 0.3);
-            pong.delayTime.setTargetAtTime(seconds, time, on ? 0.8 : 0.3);
+            for (const line of [delay, pong]) {
+                line.delayTime.setValueAtTime(line.delayTime.value, time);
+                line.delayTime.setTargetAtTime(seconds, time, on ? 0.8 : 0.3);
+            }
         },
         /** Kick the spring tank: a crash of noise and a thump straight into the springs. @param {number} [time] */
         springCrash(time = context.currentTime) {

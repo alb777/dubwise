@@ -8,7 +8,15 @@ import { OfflineAudioContext } from "node-web-audio-api";
 import { compose, mulberry32 } from "../skills/dubwise/scripts/composer.mjs";
 import { parse } from "../skills/dubwise/scripts/notation.mjs";
 import { createEngine, TRACKS } from "../src/engine.js";
-import { echoSeconds, eventsAt, humanize, renderRiddim, stepSeconds, swingOffset } from "../src/sequencer.js";
+import {
+    echoSeconds,
+    eventsAt,
+    humanize,
+    renderRiddim,
+    scheduleFill,
+    stepSeconds,
+    swingOffset,
+} from "../src/sequencer.js";
 
 const RIDDIMS = join(import.meta.dirname, "..", "skills", "dubwise", "assets", "riddims");
 
@@ -88,6 +96,26 @@ describe("sequencer", () => {
     it("bubbles the chord on the organ row", () => {
         const riddim = riddimOf("dubwise 1\nkey C major\norgan x...............\n");
         assert.deepEqual(eventsAt(riddim, 0), [{ track: "organ", velocity: 0.8, midis: [60, 64, 67] }]);
+    });
+
+    it("fills the last beat of a phrase and lets go at its end", () => {
+        const riddim = riddimOf("dubwise 1\nbpm 60\nbars 1\n");
+        const calls = [];
+        const engine = {
+            springCrash: (time) => calls.push(["crash", time]),
+            setThrow: (track, on, time) => calls.push(["throw", track, on, time]),
+            setSpin: (on, time) => calls.push(["spin", on, time]),
+        };
+        for (let position = 0; position < 16; position++) scheduleFill(engine, riddim, position, position, 0.25);
+        assert.deepEqual(calls, [
+            ["crash", 12],
+            ["throw", "snare", true, 12],
+            ["throw", "clap", true, 12],
+            ["spin", true, 12],
+            ["throw", "snare", false, 15.25],
+            ["throw", "clap", false, 15.25],
+            ["spin", false, 15.25],
+        ]);
     });
 
     it("turns lead holds into longer melodica notes", () => {
@@ -261,8 +289,10 @@ describe("audio", () => {
 
     it("sounds the siren only while it is held", async () => {
         const silent = riddimOf("dubwise 1\necho 1/4 0\n");
+        // No steps are scheduled, so the phrase fill does not spin the echo over the release being measured.
         const buffer = await render(silent, {
             seconds: 3,
+            playSteps: 0,
             configure: (engine) => {
                 engine.setSpring(0, 0);
                 engine.setThrow("siren", false, 0);
