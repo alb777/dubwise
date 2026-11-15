@@ -48,6 +48,10 @@ const MIX = /** @type {Record<Track, { level: number, echo: number, spring: numb
     keys: { level: 0.45, echo: 0.3, spring: 0.3, pan: -0.2 },
 });
 
+/** What each track keeps of its level at the bottom of a kick's dip (the sidechain). The echo returns dip too. */
+const SIDECHAIN = /** @type {Partial<Record<Track, number>>} */ ({ bass: 0.4, skank: 0.6 });
+const ECHO_DUCK = 0.5;
+
 const FILTER_LOW = 20000;
 const FILTER_LOWPASS_MIN = 120;
 const FILTER_HIGHPASS_MAX = 6000;
@@ -219,12 +223,24 @@ export function createEngine(context, { seed = 7 } = {}) {
     feedback.gain.value = 0.25;
     echoIn.connect(delay);
     delay.connect(tone).connect(lowCut).connect(tape).connect(feedback).connect(pong).connect(delay);
+    /**
+     * Gains that dip under every kick, the sidechain: each keeps `depth` of its level at the bottom of the dip.
+     * @type {{ param: AudioParam, base: number, depth: number }[]}
+     */
+    const sidechained = [];
+    /** @param {AudioParam} param @param {number} depth */
+    function sidechain(param, depth) {
+        sidechained.push({ param, base: param.value, depth });
+    }
+
     const echoReturn = context.createGain();
     echoReturn.gain.value = 0.85;
     panTo(tape.connect(echoReturn), -0.6, mixBus);
     const pongReturn = context.createGain();
     pongReturn.gain.value = 0.85;
     panTo(pong.connect(pongReturn), 0.6, mixBus);
+    sidechain(echoReturn.gain, ECHO_DUCK);
+    sidechain(pongReturn.gain, ECHO_DUCK);
     // The space head's bloom: repeats also run through a spring tank of their own, outside the feedback loop,
     // so the desk's spring knob and the echo head's wash stay apart.
     const spaceWash = context.createGain();
@@ -291,6 +307,8 @@ export function createEngine(context, { seed = 7 } = {}) {
         springSend.gain.value = MIX[track].spring;
         input.connect(level).connect(mute);
         panTo(mute, MIX[track].pan, mixBus);
+        const duck = SIDECHAIN[track];
+        if (duck !== undefined) sidechain(level.gain, duck);
         mute.connect(echoSend).connect(echoIn);
         mute.connect(springSend).connect(springIn);
         channels[track] = { input, mute, echoSend, springSend, echoBase: MIX[track].echo };
@@ -322,6 +340,12 @@ export function createEngine(context, { seed = 7 } = {}) {
 
     /** @param {number} time @param {number} velocity */
     function kick(time, velocity) {
+        for (const { param, base, depth } of sidechained) {
+            // The anchor keeps node-web-audio-api from jumping the gain before the dip.
+            param.setValueAtTime(base, time);
+            param.setTargetAtTime(base * depth, time, 0.005);
+            param.setTargetAtTime(base, time + 0.09, 0.08);
+        }
         const osc = context.createOscillator();
         osc.frequency.setValueAtTime(150, time);
         osc.frequency.exponentialRampToValueAtTime(46, time + 0.1);
