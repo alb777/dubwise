@@ -16,6 +16,27 @@ const TICK_MS = 25;
 const JITTER_SECONDS = 0.003;
 const VELOCITY_SPREAD = 0.06;
 
+/** The fill covers the last beat of a phrase, which is this many steps. */
+const FILL_STEPS = 4;
+
+/**
+ * The fill that ends a phrase: on its last beat the snare and clap throw into the echo, the spring crashes and the
+ * echo spins, and it all lets go at the end of the phrase.
+ * @param {Engine} engine @param {Riddim} riddim @param {number} position @param {number} time @param {number} seconds
+ */
+export function scheduleFill(engine, riddim, position, time, seconds) {
+    const phraseSteps = totalSteps(riddim);
+    if (position === phraseSteps - FILL_STEPS) {
+        engine.springCrash(time);
+        for (const track of /** @type {const} */ (["snare", "clap"])) engine.setThrow(track, true, time);
+        engine.setSpin(true, time);
+    }
+    if (position === phraseSteps - 1) {
+        for (const track of /** @type {const} */ (["snare", "clap"])) engine.setThrow(track, false, time + seconds);
+        engine.setSpin(false, time + seconds);
+    }
+}
+
 /**
  * Nudge a hit's timing and velocity a little, so a riddim does not play like a machine.
  * @param {NoteEvent} event @param {number} time @param {() => number} random
@@ -127,6 +148,7 @@ export function createSequencer(engine, getRiddim, onStep) {
                 const hit = humanize(event, time, Math.random);
                 engine.trigger(hit.event, hit.time, seconds);
             }
+            scheduleFill(engine, riddim, position, time, seconds);
             onStep?.(position, time);
             nextTime += seconds;
             step++;
@@ -177,6 +199,7 @@ export async function renderRiddim(OfflineContext, makeEngine, riddim, options) 
             const hit = humanize(event, time, random);
             engine.trigger(hit.event, hit.time, seconds);
         }
+        scheduleFill(engine, riddim, position, time, seconds);
     }
     return context.startRendering();
 }
