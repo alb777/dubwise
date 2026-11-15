@@ -3,6 +3,7 @@
  * Turns a riddim into timed note events. The pure helpers are shared by the live scheduler
  * and the offline renderer, so what the tests render is what the app plays.
  */
+import { mulberry32 } from "../skills/dubwise/scripts/composer.mjs";
 import { bassMidi, chordAt, chordMidi, leadMidi, STEPS_PER_BAR, stepAt } from "../skills/dubwise/scripts/notation.mjs";
 
 /** @typedef {import("../skills/dubwise/scripts/notation.mjs").Riddim} Riddim */
@@ -11,6 +12,20 @@ import { bassMidi, chordAt, chordMidi, leadMidi, STEPS_PER_BAR, stepAt } from ".
 
 const LOOKAHEAD_SECONDS = 0.15;
 const TICK_MS = 25;
+/** How far a hit may land early or late, in seconds, and how much its velocity may swing either way. */
+const JITTER_SECONDS = 0.003;
+const VELOCITY_SPREAD = 0.06;
+
+/**
+ * Nudge a hit's timing and velocity a little, so a riddim does not play like a machine.
+ * @param {NoteEvent} event @param {number} time @param {() => number} random
+ * @returns {{ event: NoteEvent, time: number }}
+ */
+export function humanize(event, time, random) {
+    const late = (random() - 0.5) * 2 * JITTER_SECONDS;
+    const swing = 1 + (random() - 0.5) * 2 * VELOCITY_SPREAD;
+    return { event: { ...event, velocity: event.velocity * swing }, time: time + late };
+}
 
 /** Length of one 16th-note step. @param {number} bpm */
 export function stepSeconds(bpm) {
@@ -108,7 +123,10 @@ export function createSequencer(engine, getRiddim, onStep) {
             const position = step % totalSteps(riddim);
             const seconds = stepSeconds(riddim.bpm);
             const time = nextTime + swingOffset(position, riddim.bpm, riddim.swing);
-            for (const event of eventsAt(riddim, position)) engine.trigger(event, time, seconds);
+            for (const event of eventsAt(riddim, position)) {
+                const hit = humanize(event, time, Math.random);
+                engine.trigger(hit.event, hit.time, seconds);
+            }
             onStep?.(position, time);
             nextTime += seconds;
             step++;
@@ -150,10 +168,15 @@ export async function renderRiddim(OfflineContext, makeEngine, riddim, options) 
     options.configure?.(engine);
     const seconds = stepSeconds(riddim.bpm);
     const steps = options.playSteps ?? Math.floor(options.seconds / seconds);
+    // A fixed seed, so a render is the same every time it runs.
+    const random = mulberry32(1);
     for (let step = 0; step < steps; step++) {
         const position = step % totalSteps(riddim);
         const time = 0.05 + step * seconds + swingOffset(position, riddim.bpm, riddim.swing);
-        for (const event of eventsAt(riddim, position)) engine.trigger(event, time, seconds);
+        for (const event of eventsAt(riddim, position)) {
+            const hit = humanize(event, time, random);
+            engine.trigger(hit.event, hit.time, seconds);
+        }
     }
     return context.startRendering();
 }

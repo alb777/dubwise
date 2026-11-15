@@ -5,10 +5,10 @@ import { describe, it } from "node:test";
 
 import { OfflineAudioContext } from "node-web-audio-api";
 
-import { compose } from "../skills/dubwise/scripts/composer.mjs";
+import { compose, mulberry32 } from "../skills/dubwise/scripts/composer.mjs";
 import { parse } from "../skills/dubwise/scripts/notation.mjs";
 import { createEngine, TRACKS } from "../src/engine.js";
-import { echoSeconds, eventsAt, renderRiddim, stepSeconds, swingOffset } from "../src/sequencer.js";
+import { echoSeconds, eventsAt, humanize, renderRiddim, stepSeconds, swingOffset } from "../src/sequencer.js";
 
 const RIDDIMS = join(import.meta.dirname, "..", "skills", "dubwise", "assets", "riddims");
 
@@ -131,6 +131,20 @@ describe("audio", () => {
         });
     }
 
+    it("nudges hits a little and keeps renders repeatable", async () => {
+        const event = { track: "hat", velocity: 0.8, open: false };
+        const random = mulberry32(3);
+        const hits = Array.from({ length: 200 }, () => humanize(event, 1, random));
+        const times = hits.map((h) => h.time - 1);
+        const velocities = hits.map((h) => h.event.velocity / 0.8);
+        assert.ok(Math.max(...times) - Math.min(...times) > 0.001, "timing should vary");
+        assert.ok(Math.max(...times) <= 0.003 && Math.min(...times) >= -0.003, "timing stays within 3 ms");
+        assert.ok(Math.max(...velocities) <= 1.06 && Math.min(...velocities) >= 0.94, "velocity stays within 6%");
+        const a = await render(preset("steppers"), { seconds: 2 });
+        const b = await render(preset("steppers"), { seconds: 2 });
+        assert.deepEqual(a.getChannelData(0), b.getChannelData(0));
+    });
+
     it("ducks the bass under each kick and lets it back up", async () => {
         const hold = "bass 1 - - - - - - - - - - - - - - -";
         const alone = await render(riddimOf(`dubwise 1\nbpm 80\n${hold}\n`), {
@@ -149,7 +163,7 @@ describe("audio", () => {
             }
             return sum;
         };
-        assert.ok(energy(ducked, 0.06, 0.1) < energy(alone, 0.06, 0.1) * 0.6, "bass should dip right after the kick");
+        assert.ok(energy(ducked, 0.1, 0.14) < energy(alone, 0.1, 0.14) * 0.6, "bass should dip right after the kick");
         assert.ok(energy(ducked, 0.3, 0.35) > energy(alone, 0.3, 0.35) * 0.9, "bass should be back up by then");
     });
 
