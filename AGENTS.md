@@ -15,7 +15,7 @@ A dub sound system in the browser, live at https://alb777.github.io/dubwise/. Pl
 ## Commands
 
 1. `npm ci`: install the dev tooling (verified 2026-10-17).
-2. `npm test`: all unit tests (verified 2026-11-15, 424 passing).
+2. `npm test`: all unit tests (verified 2026-11-15, 425 passing).
 3. `npm run check`: `tsc` on the JSDoc types plus `biome check .` (verified 2026-10-21).
 4. `npm run check:browser`: audio and UI checks in a headless browser, Brave by default, `BROWSER=google-chrome` as in CI (verified 2026-10-21 with Brave).
 5. `npm run sw:version`: restamp the service worker cache names (verified 2026-10-21, restamped for the lead line).
@@ -54,3 +54,4 @@ A dub sound system in the browser, live at https://alb777.github.io/dubwise/. Pl
 15. A fixed wait in a browser check races the page: the first idea after a reload spends 2 to 3 s parsing `lexicon.bin`, so `tests/browser/ui.mjs` polls with its `until` helper instead of sleeping before a check.
 16. The mix is stereo since 2026-11-15: `panTo` in engine.js places each track and the ping-pong echo with fixed gains per side. Do not use `createStereoPanner`: node-web-audio-api puts its center 6 dB down, browsers 3 dB down, so levels would differ by engine.
 17. The kick sidechains through gain automation, not extra nodes: `SIDECHAIN` (bass, skank) and the echo returns are registered with `sidechain()`, and `kick()` dips them. A muted kick still ducks, because the dip ignores the mute.
+18. Every hit is humanized in `humanize()` (sequencer.js): up to 3 ms early or late and 6% of velocity. The live scheduler uses `Math.random`, while `renderRiddim` uses a fixed seed so tests and exports repeat. Do not add randomness anywhere else without a seed.
