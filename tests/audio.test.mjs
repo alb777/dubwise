@@ -124,11 +124,34 @@ describe("audio", () => {
                 : preset("steppers");
             const buffer = await render(riddim, { seconds: 3.3, configure: soloing(track) });
             const result = measure(buffer, 0.05);
-            // Panned tracks lose about 1 dB of average level to the far side, so the floor sits a little lower.
-            assert.ok(result.db > -46, `${track} rms ${result.db.toFixed(1)} dBFS`);
+            // Panned tracks lose about 1 dB to the far side, and the kick's dip takes about 3 dB more from bass and
+            // skank on average, so the floor sits lower than a steady track would need.
+            assert.ok(result.db > -50, `${track} rms ${result.db.toFixed(1)} dBFS`);
             assert.equal(result.nan, false);
         });
     }
+
+    it("ducks the bass under each kick and lets it back up", async () => {
+        const hold = "bass 1 - - - - - - - - - - - - - - -";
+        const alone = await render(riddimOf(`dubwise 1\nbpm 80\n${hold}\n`), {
+            seconds: 1.2,
+            configure: soloing("bass"),
+        });
+        const ducked = await render(riddimOf(`dubwise 1\nbpm 80\nkick x...............\n${hold}\n`), {
+            seconds: 1.2,
+            configure: soloing("bass"),
+        });
+        const energy = (buffer, from, to) => {
+            const data = buffer.getChannelData(0);
+            let sum = 0;
+            for (let i = Math.floor(from * buffer.sampleRate); i < Math.floor(to * buffer.sampleRate); i++) {
+                sum += data[i] * data[i];
+            }
+            return sum;
+        };
+        assert.ok(energy(ducked, 0.06, 0.1) < energy(alone, 0.06, 0.1) * 0.6, "bass should dip right after the kick");
+        assert.ok(energy(ducked, 0.3, 0.35) > energy(alone, 0.3, 0.35) * 0.9, "bass should be back up by then");
+    });
 
     it("bounces each echo repeat to the other side", async () => {
         const riddim = riddimOf(`dubwise 1\nbpm 80\nrim x...............\necho 1/4 0.5\nspring 0\n`);
