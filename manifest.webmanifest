@@ -1,7 +1,7 @@
 {
     "name": "dubwise",
     "short_name": "dubwise",
-    "description": "A dub sound system in your browser: synthesized riddims, tape echo, spring reverb, a siren and a console you can live-code or hand to an AI.",
+    "description": "A dub sound system in your browser. Describe a riddim in your own words and it plays. No samples, no install, works offline.",
     "start_url": "./",
     "scope": "./",
     "display": "standalone",
