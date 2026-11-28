@@ -47,7 +47,7 @@ The log keeps what you typed, how each idea was read, how long the AI took and w
 
 ## How ideas become riddims
 
-The composer runs in the page. It reads a style, tempo, key, mood, images (rain, a beach party, a march) and about 750 references: reggae, dub and dancehall artists, famous riddims, Brazilian funk, rap, rock and classical. A reference brings broad style traits only, never a real bassline or melody. `X meets Y` splits the work: the first sets drums and tempo, the second the echo and bass.
+The composer runs in the page. It reads a style, tempo, key, mood, images (rain, a beach party, a march) and about 750 references: reggae, dub and dancehall artists, famous riddims, Brazilian funk, rap, rock and classical. A reference brings broad style traits only, never a real bassline or melody. `X meets Y` splits the work: the first sets drums and tempo, the second the echo and bass. Steppers puts the kick on all four beats and ghosts a short octave above the rooted bass on the offbeats of beats 2 and 4, where the low end is busy with the kick.
 
 Words it doesn't know go to its own word map, a 4 MB table from [potion-multilingual-128M](https://huggingface.co/minishlab/potion-multilingual-128M) downloaded the first time it's needed. For names and films you can add an AI under **✦ ai**:
 
