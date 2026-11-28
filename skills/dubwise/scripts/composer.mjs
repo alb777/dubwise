@@ -950,10 +950,12 @@ function bassBar(random, style, density, move, chords, nextChord, key) {
             const candidates = strong ? tones : [current - 1, current + 1, ...tones];
             degree = pick(random, candidates);
         }
+        // A short octave above the root on the "and" of beats 2 and 4 cuts through where the kick owns the sub.
+        const ghost = style === "steppers" && move === "root" && (step === 6 || step === 14) && degree === root;
         degree = fitBass(Math.max(-3, Math.min(8, degree)), key);
         // A borrowed chord, such as the bVII of a major key, flattens or sharpens its root wherever the bass plays it.
         const borrowed = (((degree - root) % 7) + 7) % 7 === 0 ? chords[under].sign : "";
-        tokens[step] = borrowed + degreeToken(degree);
+        tokens[step] = borrowed + degreeToken(ghost ? degree + 7 : degree);
         current = degree;
         const gap = (starts[i + 1] ?? STEPS_PER_BAR) - step;
         if (gap >= 3 && random() < 0.45) tokens[step + 1] = "-";

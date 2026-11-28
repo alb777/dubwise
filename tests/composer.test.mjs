@@ -150,6 +150,15 @@ describe("composing", () => {
         }
     });
 
+    it("ghosts an octave on the steppers offbeats between kicks", () => {
+        const { riddim } = riddimFor("a dark steppers in A minor", 5);
+        assert.equal(riddim.bass[6], "1'", "the and of beat 2");
+        assert.equal(riddim.bass[14], "1'", "the and of beat 4");
+        assert.equal(riddim.bass[0], "1", "the kick still gets the root");
+        const melodic = riddimFor("a dark steppers in A minor with melodic bass", 5).riddim;
+        assert.ok(!melodic.bass[6].includes("'") && !melodic.bass[14].includes("'"), "melodic bass is left alone");
+    });
+
     it("writes a melodica line when the idea asks for a melody", () => {
         const ideas = [
             "a dark steppers in D minor with a melody",
