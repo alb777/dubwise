@@ -58,6 +58,7 @@ describe("parseCommand", () => {
         ["theme jamaica", { type: "theme", name: "jamaica" }],
         ["theme South Africa", { type: "theme", name: "south-africa" }],
         ["theme trinidad and tobago", { type: "theme", name: "trinidad" }],
+        ["theme green-gold", { type: "theme", name: "green-gold" }],
         ["guide", { type: "guide" }],
         ["faster", { type: "compose", request: "faster" }],
         ["ai", { type: "ai" }],

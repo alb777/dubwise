@@ -28,6 +28,7 @@ export const THEMES = /** @type {const} */ ({
     britain: "Great Britain",
     trinidad: "Trinidad & Tobago",
     poland: "Poland",
+    "green-gold": "Green and Gold",
 });
 const SETTINGS = new Set(["bpm", "key", "swing", "bars", "echo", "spring", "bass", "lead", "chords", ...DRUMS]);
 const COMMAND_WORDS = [

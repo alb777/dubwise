@@ -19,7 +19,7 @@ A dub sound system in your browser. Describe a riddim in your own words and it p
 5. **Edit and live-code**: click the grid (the `organ` row bubbles the chords under the skank), or type a line like `bpm 76` or `kick x...x...x...x...`.
 6. **Talk to the selector**, in English, Portuguese or Spanish: say hi for the mood of the day, `tip` for a dub technique it plays on your riddim, `who is Scientist?` for the story behind a name, `who else sounds like this?` for names close to the riddim playing.
 7. **Share it**: the whole riddim lives in the link.
-8. **Learn as you play**: **guide** (or `?`) opens beside the app, and the flag in the corner picks one of 8 themes.
+8. **Learn as you play**: **guide** (or `?`) opens beside the app, and the flag in the corner picks one of 9 themes.
 
 ## The console
 

@@ -24,13 +24,13 @@ A dub sound system in the browser, live at https://alb777.github.io/dubwise/. Pl
 8. `npm run check:ai`: the real in-browser model on the GPU, 1.1 GB download, needs WebGPU through Vulkan (not run).
 9. `npm run build:lexicon`: rebuild `lexicon.bin` from a 512 MB model download (not run).
 10. `npm run build:references`: rebuild `artists.mjs` and `src/selector-content.js` from a private source outside this repo (not run, needs that source).
-11. `git push origin main`: publishes, GitHub Pages serves `main` as it is (not run).
+11. Publish: push the branch, open a PR, wait for the `test` check, `gh pr merge --squash --delete-branch`; GitHub Pages serves `main` (verified 2026-11-28).
 12. `node skills/dubwise/cli.mjs compose "<idea>"`: the agent skill's CLI, `spec`, `refine`, `check` and `url` (verified 2026-10-21, `tests/skill.test.mjs`).
 
 ## Conventions
 
 1. One-line conventional commits without scope: `feat: x`, `fix: x`, `docs: x`, `test: x`. No AI attribution, no Co-Authored-By.
-2. Solo project: commit straight to `main`, no branches or PRs.
+2. `main` is protected: a direct push is refused, so work lands through a branch and a PR merged with `gh pr merge --squash --delete-branch` once `test` is green. Never force-push.
 3. Before a push run `npm test` and `npm run check`, plus `npm run check:browser` when UI or audio changed.
 4. After a push, follow that exact commit with `gh run list --commit <sha>` until `ci` and `pages build and deployment` are both green. Right after a push "the latest run" can still be the previous commit's. A red run gets fixed before the work counts as done.
 5. Biome: 4 spaces, 120 columns, it also covers tests and tools. `tsc` is strict on `src/` and `skills/`.
@@ -48,7 +48,7 @@ A dub sound system in the browser, live at https://alb777.github.io/dubwise/. Pl
 9. Bass, the lead line and chords are scale degrees, so key and mode changes keep them. References carry style traits only, never a real bassline or melody.
 10. WebGPU on Linux needs Vulkan, which can break video in a whole browser. Suggest it only for a separate profile, never an everyday one. Keep `DUBWISE_AI_PROFILE` on disk, not on a RAM tmpfs `/tmp`. Without the flags Brave here exposes `navigator.gpu` but `requestAdapter()` returns null, so the app says "no WebGPU"; probe it from a secure context (`127.0.0.1` or https), never `about:blank`.
 11. Headless Chrome reports `hover: none`, so hover-only UI such as `.keys-hint` never shows in screenshots.
-12. A new theme needs a `[data-theme]` block in `styles.css`, an entry in `THEMES` and a pass of the WCAG contrast test in `tests/themes.test.mjs`.
+12. A new theme needs a `[data-theme]` block in `styles.css`, an entry in `THEMES` and a pass of the WCAG contrast test in `tests/themes.test.mjs`. Green and Gold added 2026-11-15.
 13. `skills/dubwise/cli.mjs` starts with `@ts-nocheck` on purpose: `tsconfig` has `"types": []`, so Node's process, stdin and fs are untyped there; the composer and notation it imports stay checked.
 14. `tools/record-demo.mjs` records at a fixed 1280x1440 window and throws when the console falls below it: raise `HEIGHT` whenever the layout grows, as a new grid row did. It writes `docs/demo.mp4` and `docs/demo.gif`; `tools/record-video.mjs` writes the same files at 1140 px and is the stale copy of it.
 15. A fixed wait in a browser check races the page: the first idea after a reload spends 2 to 3 s parsing `lexicon.bin`, so `tests/browser/ui.mjs` polls with its `until` helper instead of sleeping before a check.

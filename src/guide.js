@@ -95,6 +95,7 @@ export const GUIDE = [
             "theme britain",
             "theme trinidad",
             "theme poland",
+            "theme green-gold",
             "theme dub",
         ],
     },
